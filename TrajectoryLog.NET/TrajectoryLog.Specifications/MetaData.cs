@@ -10,7 +10,7 @@ namespace TrajectoryLog.NET.TrajectoryLog.Specifications
     {
         public string PatientID { get; set; }
         public string PlanName { get; set; }
-        public Guid SOPInstanceUID { get; set; }                            
+        public string SOPInstanceUID { get; set; }                            
         public double MUPlanned { get; set; }
         public double MURemaining { get; set; }
         public string Energy { get; set; }

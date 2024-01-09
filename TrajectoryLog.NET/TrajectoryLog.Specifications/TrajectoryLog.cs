@@ -10,5 +10,10 @@ namespace TrajectoryLog.NET.TrajectoryLog.Specifications
     {
         public TrajectoryHeader Header { get; set; }
         public StringBuilder HeaderError { get; set; }
+        public TrajectoryLog()
+        {
+            Header = new TrajectoryHeader();
+            HeaderError = new StringBuilder();
+        }
     }
 }

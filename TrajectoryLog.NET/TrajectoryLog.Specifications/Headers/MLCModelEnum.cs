@@ -8,8 +8,9 @@ namespace TrajectoryLog.NET.TrajectoryLog.Specifications.Headers
 {
     public enum MLCModelEnum
     {
-        NDS80,
-        NDS120,
-        NDS120HD
+        NDS80 = 0,//0
+        NDS120 = 2,//2
+        NDS120HD = 3,//3
+        SX2 = 99 //Halcyon TO DO: fill in correct number
     }
 }
