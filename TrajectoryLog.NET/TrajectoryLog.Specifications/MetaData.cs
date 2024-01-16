@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TrajectoryLog.NET.TrajectoryLog.Specifications
+namespace TrajectoryLog.NET.TrajectorySpecifications
 {
     public class MetaData
     {

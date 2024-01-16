@@ -5,14 +5,14 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TrajectoryLog.NET.TrajectoryLog.Specifications;
-using TrajectoryLog.NET.TrajectoryLog.Specifications.AxisHelpers;
-using TrajectoryLog.NET.TrajectoryLog.Specifications.Headers;
-using Specs = TrajectoryLog.NET.TrajectoryLog.Specifications;
+using TrajectoryLog.NET.TrajectorySpecifications;
+using TrajectoryLog.NET.TrajectorySpecifications.AxisHelpers;
+using TrajectoryLog.NET.TrajectorySpecifications.Headers;
+using Specs = TrajectoryLog.NET.TrajectorySpecifications;
 
 namespace TrajectoryLog.NET
 {
-    public static class Trajectory
+    public static class TrajectoryAPI
     {
         #region Statics
         public static Dictionary<string, int> LogSizes = new Dictionary<string, int>()
@@ -69,10 +69,10 @@ namespace TrajectoryLog.NET
         /// </summary>
         /// <param name="fileName">Filename of BIN file.</param>
         /// <returns>Trajectory Log from TrajectoryLog.Specticiations.TrajectorLog</returns>
-        public static Specs.TrajectoryLog LoadLog(string fileName)
+        public static Specs.TrajectoryLogInfo LoadLog(string fileName)
         {
             //instantiate the log file
-            Specs.TrajectoryLog tLog = new Specs.TrajectoryLog();
+            Specs.TrajectoryLogInfo tLog = new Specs.TrajectoryLogInfo();
             //fill the log file data.
             using (BinaryReader logReader = new BinaryReader(new FileStream(fileName, FileMode.Open)))
             {
@@ -321,7 +321,7 @@ namespace TrajectoryLog.NET
             return tLog;
         }
 
-        public static bool ToCSV(Specs.TrajectoryLog tlog)
+        public static bool ToCSV(Specs.TrajectoryLogInfo tlog)
         {
             SaveFileDialog sfd = new SaveFileDialog();
             sfd.Filter = "Comma Separated Value (*.csv)|*.csv";

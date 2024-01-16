@@ -15,16 +15,16 @@ namespace TrajectoryLog.NET.Client
         {
             OpenFileDialog ofd = new OpenFileDialog();
             ofd.Filter = "Trajectory Log File (*.bin)|*.bin";
-            Trajectory.EnableDebug();
-            TrajectoryLog.Specifications.TrajectoryLog locallog = null;
+            TrajectoryAPI.EnableDebug();
+            TrajectorySpecifications.TrajectoryLogInfo locallog = null;
             if(ofd.ShowDialog() == true)
             {
-                locallog = Trajectory.LoadLog(ofd.FileName);
+                locallog = TrajectoryAPI.LoadLog(ofd.FileName);
             }
             Console.WriteLine("Do you want to write .csv? (y/n)");
             if (Console.ReadLine().Trim().Equals("y", StringComparison.OrdinalIgnoreCase))
             {
-                Trajectory.ToCSV(locallog);
+                TrajectoryAPI.ToCSV(locallog);
             }
             Console.ReadLine();
         }

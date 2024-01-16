@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TrajectoryLog.NET.TrajectoryLog.Specifications.AxisHelpers
+namespace TrajectoryLog.NET.TrajectorySpecifications.AxisHelpers
 {
     public class Subbeam
     {

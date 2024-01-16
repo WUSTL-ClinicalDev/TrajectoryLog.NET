@@ -51,7 +51,7 @@
     <Compile Include="TrajectoryLog.Specifications\MetaData.cs" />
     <Compile Include="TrajectoryLog.Specifications\AxisHelpers\Subbeam.cs" />
     <Compile Include="TrajectoryLog.Specifications\TrajectoryHeader.cs" />
-    <Compile Include="TrajectoryLog.Specifications\TrajectoryLog.cs" />
+    <Compile Include="TrajectoryLog.Specifications\TrajectoryLogInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

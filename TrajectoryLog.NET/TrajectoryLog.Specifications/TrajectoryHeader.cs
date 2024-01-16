@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TrajectoryLog.NET.TrajectoryLog.Specifications.AxisHelpers;
-using TrajectoryLog.NET.TrajectoryLog.Specifications.Headers;
+using TrajectoryLog.NET.TrajectorySpecifications.AxisHelpers;
+using TrajectoryLog.NET.TrajectorySpecifications.Headers;
 
-namespace TrajectoryLog.NET.TrajectoryLog.Specifications
+namespace TrajectoryLog.NET.TrajectorySpecifications
 {
     public class TrajectoryHeader
     {
