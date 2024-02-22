@@ -355,7 +355,7 @@ namespace TrajectoryLog.NET
                                 sw.WriteLine($"Samples Per Axis,[{String.Join("\t ", tlog.Header.SamplesPerAxis)}]");
                                 break;
                             case "AxisScale":
-                                sw.WriteLine($"Axis Scale,{tlog.Header.AxisScale}"); 
+                                sw.WriteLine($"Axis Scale,{tlog.Header.AxisScale}");
                                 break;
                             case "NumberOfSubbeams":
                                 sw.WriteLine($"Number of Subbeams,{tlog.Header.NumberOfSubbeams}");
@@ -364,7 +364,7 @@ namespace TrajectoryLog.NET
                                 sw.WriteLine($"Is Truncated (1 = truncated / 0 = not truncated),{tlog.Header.IsTruncated}");
                                 break;
                             case "NumberOfSnapshots":
-                                sw.WriteLine($"Number of Snapshots,{tlog.Header.NumberOfSnapshots}"); 
+                                sw.WriteLine($"Number of Snapshots,{tlog.Header.NumberOfSnapshots}");
                                 break;
                             case "MLCModel":
                                 sw.WriteLine($"MLC Model,{tlog.Header.MLCModel}");
@@ -408,14 +408,14 @@ namespace TrajectoryLog.NET
                     // for MLCs only
                     for (int i = 0; i < mlcsamples; i++)
                     {
-                        if(tlog.Header.MLCModel != MLCModelEnum.SX2 && i == 0)
+                        if (tlog.Header.MLCModel != MLCModelEnum.SX2 && i == 0)
                         {
                             sw.WriteLine($"Carriage A Expected [cm],{String.Join(",", tlog.Header.AxisData.MLCExp.ElementAt(i))}");
                             sw.WriteLine($"Carriage A Actual [cm],{String.Join(",", tlog.Header.AxisData.MLCAct.ElementAt(i))}");
                             i++;
                             sw.WriteLine($"Carriage B Expected [cm],{String.Join(",", tlog.Header.AxisData.MLCExp.ElementAt(i))}");
                             sw.WriteLine($"Carriage B Actual [cm],{String.Join(",", tlog.Header.AxisData.MLCAct.ElementAt(i))}");
-                        } 
+                        }
                         else
                         {
                             sw.WriteLine($"Leaf {i - 1} Expected [cm],{String.Join(",", tlog.Header.AxisData.MLCExp.ElementAt(i))}");
@@ -428,6 +428,28 @@ namespace TrajectoryLog.NET
             }
             return false;
         }
+        public static double[,] BuildExpectedFluence(Specs.TrajectoryLogInfo tlog)
+        {
+            int fieldX = 400;
+            int fieldY = 400;
+            if (tlog.Header.MLCModel == MLCModelEnum.SX2)
+            {
+                fieldX = 280;
+                fieldY = 280;
+            }
+            double[,] fluence = new double[fieldY, fieldX];
+            float muStart = 0f;
+            //int i = 0;
+            for (int i = 0; i < tlog.Header.AxisData.MLCExp.ElementAt(2).Count(); i++)//loop through MLC control points.
+            {
+                float muCurrent = tlog.Header.AxisData.MUExp.ElementAt(0).ElementAt(i);
+                AddFluenceFromMLCData(tlog.Header.MLCModel, tlog.Header.AxisData.MLCExp, muStart, muCurrent, i, ref fluence);
+                muStart = muCurrent;
+
+            }
+            return fluence;
+        }
+
 
 
         #endregion
@@ -491,7 +513,7 @@ namespace TrajectoryLog.NET
                         }
                         break;
                     case 2://Y1
-                        for(int sample = 0; sample<samplesPerAxis[axisIterator]; sample++)
+                        for (int sample = 0; sample < samplesPerAxis[axisIterator]; sample++)
                         {
                             axisData.Y1Expected.Add(new float[numberOfSnapshots]);
                             axisData.Y1Actual.Add(new float[numberOfSnapshots]);
@@ -637,11 +659,11 @@ namespace TrajectoryLog.NET
                     switch (axis)
                     {
                         case 0://collimator
-                            GetAxisData(snapShot, samplesPerAxis[axisIterator], axisData.CollRtnExpected, axisData.CollRtnActual,logReader);
-                            if(bDebug && snapShot == numberOfSnapshots - 1)
+                            GetAxisData(snapShot, samplesPerAxis[axisIterator], axisData.CollRtnExpected, axisData.CollRtnActual, logReader);
+                            if (bDebug && snapShot == numberOfSnapshots - 1)
                             {
-                                Console.WriteLine($"Collimator Expected: {String.Join(", ",axisData.CollRtnExpected.ElementAt(0))}");
-                                Console.WriteLine($"Collimator Actual: {String.Join(", ",axisData.CollRtnActual.ElementAt(0))}");
+                                Console.WriteLine($"Collimator Expected: {String.Join(", ", axisData.CollRtnExpected.ElementAt(0))}");
+                                Console.WriteLine($"Collimator Actual: {String.Join(", ", axisData.CollRtnActual.ElementAt(0))}");
                             }
                             break;
                         case 1://gantry
@@ -803,7 +825,7 @@ namespace TrajectoryLog.NET
                                 Console.WriteLine($"Tracking Conformity Index Expected: {String.Join(", ", axisData.TCIExp.ElementAt(0))}");
                                 Console.WriteLine($"Tracking Conformity Index Actual: {String.Join(", ", axisData.TCIAct.ElementAt(0))}");
                             }
-                            break; 
+                            break;
                     }
                     axisIterator++;
                 }
@@ -818,6 +840,71 @@ namespace TrajectoryLog.NET
                 actual.ElementAt(sample)[snapshot] = BitConverter.ToSingle(logReader.ReadBytes(4), 0);
             }
 
+        }
+        private static void AddFluenceFromMLCData(MLCModelEnum mLCModel, List<float[]> mlcCollections, float muStart, float muCurrent, int cp, ref double[,] fluence)
+        {
+            if (mLCModel == MLCModelEnum.SX2)
+            {
+                //go up from the bottom of the fluence map, determine the position of each leaf and use the leaf above and below to determine how many rows will receive fluence.
+                for (int i = 0; i < 28; i++)
+                {
+                    //starting from the bottom at position 280
+                    //leaf model behavior: 
+                    //Leaf 1 -> 28  Proximal Bank X2
+                    //Leaf 29 -> 57 Distal Bank X2
+                    //Leaf 58->85 Proximal Bank X1
+                    //Leaf 86->114 Distal Bank X1
+                    //no need to ever use 29, 57, 86, or 114 as they are out of the 28x28 field size.                          
+                    //first 5mm
+                    int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 2).ElementAt(cp) * 10);//- sign is Varian Scale conversion. 
+                    int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 10);//we need +2 to skip the carriages.
+                    int colBeforeStart = -1;
+                    int colBeforeEnd = 281;
+                    int colAfterStart = -1;
+                    int colAfterEnd = 281;
+                    if (i != 27)
+                    {
+                        colAfterStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 30).ElementAt(cp) * 10);
+                        colAfterEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 30).ElementAt(cp) * 10);
+                    }
+                    if (i != 0)
+                    {
+                        colBeforeStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 31).ElementAt(cp) * 10);
+                        colAfterEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 31).ElementAt(cp) * 10);
+                    }
+                    //determine delimiter for first 5
+                    int lowerFluenceStart = colStart > colBeforeStart ? colStart : colBeforeStart;
+                    int upperFluenceStart = colStart > colAfterStart ? colStart : colAfterStart;
+                    int lowerFluenceEnd = colEnd < colBeforeEnd ? colEnd : colBeforeEnd;
+                    int upperFluenceEnd = colEnd < colAfterEnd ? colEnd : colAfterEnd;
+                    int rowStart =  i * 10;
+                    for (int ii = 0; ii < 5; ii++)//add the MU for 5 mm
+                    {
+                        for (int iii = lowerFluenceStart; iii < lowerFluenceEnd; iii++)
+                        {
+                            fluence[iii, rowStart + ii] +=  muCurrent - muStart;
+                        }
+                    }
+                    for (int ii = 5; ii < 10; ii++)
+                    {
+                        for (int iii = upperFluenceStart; iii < upperFluenceEnd; iii++)
+                        {
+                            fluence[iii, rowStart + ii] += muCurrent-muStart;
+                        }
+                    }
+                }
+                //for testing only. 
+                //for(int i = 0; i < 20; i++)
+                //{
+                //    fluence[i, i] = 10;
+                //    fluence[i, 100] = 20;
+                //    fluence[200, i] = 40;
+                //}
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
         #endregion
     }

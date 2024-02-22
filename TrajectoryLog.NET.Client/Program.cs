@@ -21,6 +21,8 @@ namespace TrajectoryLog.NET.Client
             {
                 locallog = TrajectoryAPI.LoadLog(ofd.FileName);
             }
+            //testing fluence export
+            TrajectoryAPI.BuildExpectedFluence(locallog);
             Console.WriteLine("Do you want to write .csv? (y/n)");
             if (Console.ReadLine().Trim().Equals("y", StringComparison.OrdinalIgnoreCase))
             {

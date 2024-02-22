@@ -11,6 +11,6 @@ namespace TrajectoryLog.NET.TrajectorySpecifications.Headers
         NDS80 = 0,//0
         NDS120 = 2,//2
         NDS120HD = 3,//3
-        SX2 = 99 //Halcyon TO DO: fill in correct number
+        SX2 = 6 //Halcyon TO DO: fill in correct number
     }
 }
