@@ -428,22 +428,23 @@ namespace TrajectoryLog.NET
             }
             return false;
         }
-        public static double[,] BuildExpectedFluence(Specs.TrajectoryLogInfo tlog)
+        public static double[,] BuildExpectedFluence(Specs.TrajectoryLogInfo tlog, string MLCstring)
         {
-            int fieldX = 400;
-            int fieldY = 400;
+            int fieldX = 4000;
+            int fieldY = 4000;
             if (tlog.Header.MLCModel == MLCModelEnum.SX2)
             {
-                fieldX = 280;
-                fieldY = 280;
+                fieldX = 2800;
+                fieldY = 2800;
             }
             double[,] fluence = new double[fieldY, fieldX];
             float muStart = 0f;
             //int i = 0;
-            for (int i = 0; i < tlog.Header.AxisData.MLCExp.ElementAt(2).Count(); i++)//loop through MLC control points.
+            var logs = MLCstring == "Expected" ? tlog.Header.AxisData.MLCExp : tlog.Header.AxisData.MLCAct;
+            for (int i = 0; i < logs.ElementAt(2).Count(); i++)//loop through MLC control points.
             {
                 float muCurrent = tlog.Header.AxisData.MUExp.ElementAt(0).ElementAt(i);
-                AddFluenceFromMLCData(tlog.Header.MLCModel, tlog.Header.AxisData.MLCExp, muStart, muCurrent, i, ref fluence);
+                AddFluenceFromMLCData(tlog.Header.MLCModel, logs, muStart, muCurrent, i, ref fluence);
                 muStart = muCurrent;
 
             }
@@ -856,40 +857,31 @@ namespace TrajectoryLog.NET
                     //Leaf 86->114 Distal Bank X1
                     //no need to ever use 29, 57, 86, or 114 as they are out of the 28x28 field size.                          
                     //first 5mm
-                    int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 2).ElementAt(cp) * 10);//- sign is Varian Scale conversion. 
-                    int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 10);//we need +2 to skip the carriages.
-                    int colBeforeStart = -1;
-                    int colBeforeEnd = 281;
-                    int colAfterStart = -1;
-                    int colAfterEnd = 281;
-                    if (i != 27)
-                    {
-                        colAfterStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 30).ElementAt(cp) * 10);
-                        colAfterEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 30).ElementAt(cp) * 10);
-                    }
-                    if (i != 0)
-                    {
-                        colBeforeStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 31).ElementAt(cp) * 10);
-                        colAfterEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 31).ElementAt(cp) * 10);
-                    }
+                    int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 2).ElementAt(cp) * 100);//- sign is Varian Scale conversion. 
+                    int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 100);//we need +2 to skip the carriages.
+                    int colAfterStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 31).ElementAt(cp) * 100);
+                    int colAfterEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 31).ElementAt(cp) * 100);
+                    int colBeforeStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 30).ElementAt(cp) * 100);
+                    int colBeforeEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 30).ElementAt(cp) * 100);
+
                     //determine delimiter for first 5
                     int lowerFluenceStart = colStart > colBeforeStart ? colStart : colBeforeStart;
                     int upperFluenceStart = colStart > colAfterStart ? colStart : colAfterStart;
                     int lowerFluenceEnd = colEnd < colBeforeEnd ? colEnd : colBeforeEnd;
                     int upperFluenceEnd = colEnd < colAfterEnd ? colEnd : colAfterEnd;
-                    int rowStart =  i * 10;
-                    for (int ii = 0; ii < 5; ii++)//add the MU for 5 mm
+                    int rowStart = i * 100;
+                    for (int ii = 0; ii < 50; ii++)//add the MU for 5 mm
                     {
                         for (int iii = lowerFluenceStart; iii < lowerFluenceEnd; iii++)
                         {
-                            fluence[iii, rowStart + ii] +=  muCurrent - muStart;
+                            fluence[iii, rowStart + ii] += muCurrent - muStart;
                         }
                     }
-                    for (int ii = 5; ii < 10; ii++)
+                    for (int ii = 50; ii < 100; ii++)
                     {
                         for (int iii = upperFluenceStart; iii < upperFluenceEnd; iii++)
                         {
-                            fluence[iii, rowStart + ii] += muCurrent-muStart;
+                            fluence[iii, rowStart + ii] += muCurrent - muStart;
                         }
                     }
                 }
