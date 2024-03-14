@@ -5,6 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using TrajectoryLog.NET.TrajectorySpecifications;
 using TrajectoryLog.NET.TrajectorySpecifications.AxisHelpers;
 using TrajectoryLog.NET.TrajectorySpecifications.Headers;
@@ -460,7 +465,72 @@ namespace TrajectoryLog.NET
             }
             return fluence;
         }
+        public static bool PublishPDF(Specs.TrajectoryLogInfo tlog)
+        {
+            //Initialize Flow Document
+            FlowDocument flowDocument = new FlowDocument() { FontSize = 12, FontFamily = new FontFamily("Arial") };
+            flowDocument.Blocks.Add(new Paragraph(new Run($"Trajectory report for {tlog.Header.MetaData.BeamName}")) { FontWeight = FontWeights.Bold, Margin = new Thickness(5) });
+            flowDocument.Blocks.Add(new Paragraph(new Run("RMS Results")) { FontWeight = FontWeights.Bold, Margin = new Thickness(5) });
+            //include RMS data for Gantry, Collimator, Couch
+            double gantryRMS = CalculateRMS(tlog.Header.AxisData.GantryRtnActual, tlog.Header.AxisData.GantryRtnExpected, "Gantry");
+            double collRMS = CalculateRMS(tlog.Header.AxisData.CollRtnActual, tlog.Header.AxisData.CollRtnExpected, "Collimator");
+            double mlcRMS = CalculateRMS(tlog.Header.AxisData.MLCAct, tlog.Header.AxisData.MLCExp, "MLC");
+            StackPanel rmsSP = new StackPanel();
+            rmsSP.Children.Add(new TextBlock
+            {
+                Text = $"Gantry RMS: {gantryRMS} [deg]", Margin=new Thickness(5)
+            });
+            rmsSP.Children.Add(new TextBlock
+            {
+                Text = $"Collimator RMS: {collRMS} [deg]",
+                Margin = new Thickness(5)
+            });
+            rmsSP.Children.Add(new TextBlock
+            {
+                Text = $"Average MLC RMS: {mlcRMS} [mm]",
+                Margin = new Thickness(5)
+            });
 
+            flowDocument.Blocks.Add(new BlockUIContainer(rmsSP));
+            //Print visualizations.
+            flowDocument.Blocks.Add(new Paragraph(new Run("Fluence Analysis")) { FontWeight = FontWeights.Bold, Margin = new Thickness(5) });
+            Grid grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+            grid.Children.Add(new TextBlock { Text = "Actual Image", Margin = new Thickness(5) });
+            TextBlock tb2 = new TextBlock { Text = "Expected Image", Margin = new Thickness(5) };
+            Grid.SetColumn(tb2, 1);
+            grid.Children.Add(tb2);
+            var actualFluence = BuildFluence(tlog, "Actual");
+            var expectedFluence = BuildFluence(tlog, "Expected");
+            BitmapSource actualImageSource = BuildFluenceImage(actualFluence);
+            BitmapSource expectedImageSource = BuildFluenceImage(expectedFluence);
+            Image actualImage = new Image { Source = actualImageSource, Width = 300, Height = 300, Margin = new Thickness(5) };
+            Image expectedImage = new Image { Source = expectedImageSource, Width = 300, Height = 300, Margin = new Thickness(5) };
+            Grid.SetRow(actualImage, 1);
+            Grid.SetRow(expectedImage, 1);
+            Grid.SetColumn(expectedImage, 1);
+            grid.Children.Add(actualImage);
+            grid.Children.Add(expectedImage);
+            flowDocument.Blocks.Add(new BlockUIContainer(grid));
+
+            System.Windows.Controls.PrintDialog printer = new System.Windows.Controls.PrintDialog();
+            //printer.PrintTicket.PageOrientation = System.Printing.PageOrientation.Landscape;
+            flowDocument.PageHeight = 1056;
+            flowDocument.PageWidth = 816;
+            flowDocument.PagePadding = new System.Windows.Thickness(50);
+            flowDocument.ColumnGap = 0;
+            flowDocument.ColumnWidth = 816;
+            IDocumentPaginatorSource source = flowDocument;
+            if (printer.ShowDialog() == true)
+            {
+                printer.PrintDocument(source.DocumentPaginator, "TreatmentPlanReport");
+                return true;
+            }
+            return false;
+        }
 
 
         #endregion
@@ -906,7 +976,7 @@ namespace TrajectoryLog.NET
             else if (mLCModel == MLCModelEnum.NDS120 || mLCModel == MLCModelEnum.NDS120HD)
             {
                 //loop through leaves from bottom of the field.
-                double rowStart = mLCModel == MLCModelEnum.NDS120 ? 0.0 :90.0;
+                double rowStart = mLCModel == MLCModelEnum.NDS120 ? 0.0 : 90.0;
                 for (int i = 0; i < 60; i++)
                 {
                     //float[0,*] is x1 leaf, float [1,*] is x2 leaf.
@@ -917,7 +987,7 @@ namespace TrajectoryLog.NET
                     //for NDSHD, the first 14 leavs are 0.5cm, next 32 are 0.25cm, and final 14 are 0.5cm
                     int halfLeafStart = mLCModel == MLCModelEnum.NDS120 ? 10 : 14;
                     int halfLeafEnd = mLCModel == MLCModelEnum.NDS120 ? 49 : 55;
-                    int step = mLCModel == MLCModelEnum .NDS120 ? 10 : 5;
+                    int step = mLCModel == MLCModelEnum.NDS120 ? 10 : 5;
                     double halfStep = mLCModel == MLCModelEnum.NDS120 ? 5 : 2.5;
                     if (i < halfLeafStart || i > halfLeafEnd)
                     {
@@ -949,6 +1019,62 @@ namespace TrajectoryLog.NET
                 throw new NotImplementedException();
             }
         }
+        private static double CalculateRMS(List<float[]> actual, List<float[]> expected, string parameter)
+        {
+            if (parameter != "MLC")
+            {
+                var actualData = actual.First();
+                var expectedData = expected.First();
+                List<double> squares = new List<double>();
+                for (int i = 0; i < actualData.Length; i++)
+                {
+                    squares.Add((actualData[i] - expectedData[i]) * (actualData[i] - expectedData[i]));
+                }
+                return Math.Sqrt(squares.Average());
+            }
+            else
+            {
+                List<double> squares = new List<double>();
+                for (int i = 2; i < actual.Count(); i++)
+                {
+                    List<double> leafSquares = new List<double>();
+                    var actualData = actual.ElementAt(i);
+                    var expectedData = expected.ElementAt(i);
+                    for (int j = 0; j < actualData.Length; j++)
+                    {
+                        leafSquares.Add((actualData[j] - expectedData[j]) * (actualData[j] - expectedData[j]));
+                    }
+                    squares.Add(Math.Sqrt(leafSquares.Average()));
+                }
+                return squares.Average();
+            }
+        }
+        private static BitmapSource BuildFluenceImage(double[,] fluence)
+        {
+            double[] flat_pixels = new double[fluence.GetLength(0) * fluence.GetLength(1)];
+            //lay out pixels into single array
+            for (int i = 0; i < fluence.GetLength(0); i++)
+            {
+                for (int ii = 0; ii < fluence.GetLength(1); ii++)
+                {
+                    flat_pixels[i + fluence.GetLength(0) * ii] = fluence[i, ii];
+                }
+            }
+            //translate into byte array
+            var drr_max = flat_pixels.Max();
+            var drr_min = flat_pixels.Min();
+            PixelFormat format = PixelFormats.Gray8;//low res image, but only 1 byte per pixel. 
+            int stride = (fluence.GetLength(1) * format.BitsPerPixel + 7) / 8;
+            byte[] image_bytes = new byte[stride * fluence.GetLength(0)];
+            for (int i = 0; i < flat_pixels.Length; i++)
+            {
+                double value = flat_pixels[i];
+                image_bytes[i] = Convert.ToByte(255 * ((value - drr_min) / (drr_max - drr_min)));
+            }
+            //build the bitmapsource.
+            return BitmapSource.Create(fluence.GetLength(1), fluence.GetLength(0), 25.4, 25.4, format, null, image_bytes, stride);
+        }
+
         #endregion
     }
 

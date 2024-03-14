@@ -25,13 +25,14 @@ namespace TrajectoryLog.NET.Client
             //testing fluence export
             var actualFluence = TrajectoryAPI.BuildFluence(locallog,"Actual");
             var expectedFluence = TrajectoryAPI.BuildFluence(locallog, "Expected");
-            WriteFluence(actualFluence);
-            WriteFluence(expectedFluence);
+           WriteFluence(actualFluence);
+           WriteFluence(expectedFluence);
             Console.WriteLine("Do you want to write .csv? (y/n)");
             if (Console.ReadLine().Trim().Equals("y", StringComparison.OrdinalIgnoreCase))
             {
                 TrajectoryAPI.ToCSV(locallog);
             }
+            //TrajectoryAPI.PublishPDF(locallog);
             Console.ReadLine();
         }
 
