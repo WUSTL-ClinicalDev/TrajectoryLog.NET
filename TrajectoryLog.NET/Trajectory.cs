@@ -428,23 +428,33 @@ namespace TrajectoryLog.NET
             }
             return false;
         }
-        public static double[,] BuildExpectedFluence(Specs.TrajectoryLogInfo tlog, string MLCstring)
+        /// <summary>
+        /// Builds fluence from Trajectory Log File
+        /// </summary>
+        /// <param name="tlog">Trajectory Log file to read the MLC Positions</param>
+        /// <param name="MLCstring">"Expected" or "Actual"</param>
+        /// <returns>Returns double array that is the size of the field available to the linac (in mm).
+        /// Could be 400x400mm^2 for TrueBeam or 280x280mm^2 for Halcyon.
+        /// 1mm resolution may cause issues constructing fluence for HDMLC.
+        /// </returns>
+        public static double[,] BuildFluence(Specs.TrajectoryLogInfo tlog, string MLCstring)
         {
-            int fieldX = 4000;
-            int fieldY = 4000;
+            int fieldX = 400;
+            int fieldY = 400;
             if (tlog.Header.MLCModel == MLCModelEnum.SX2)
             {
-                fieldX = 2800;
-                fieldY = 2800;
+                fieldX = 280;
+                fieldY = 280;
             }
             double[,] fluence = new double[fieldY, fieldX];
             float muStart = 0f;
+            float totalMU = MLCstring == "Expected" ? tlog.Header.AxisData.MUExp.First().Max() : tlog.Header.AxisData.MUAct.First().Max();
             //int i = 0;
             var logs = MLCstring == "Expected" ? tlog.Header.AxisData.MLCExp : tlog.Header.AxisData.MLCAct;
             for (int i = 0; i < logs.ElementAt(2).Count(); i++)//loop through MLC control points.
             {
                 float muCurrent = tlog.Header.AxisData.MUExp.ElementAt(0).ElementAt(i);
-                AddFluenceFromMLCData(tlog.Header.MLCModel, logs, muStart, muCurrent, i, ref fluence);
+                AddFluenceFromMLCData(tlog.Header.MLCModel, logs, muStart / totalMU, muCurrent / totalMU, i, ref fluence);
                 muStart = muCurrent;
 
             }
@@ -857,27 +867,27 @@ namespace TrajectoryLog.NET
                     //Leaf 86->114 Distal Bank X1
                     //no need to ever use 29, 57, 86, or 114 as they are out of the 28x28 field size.                          
                     //first 5mm
-                    int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 2).ElementAt(cp) * 100);//- sign is Varian Scale conversion. 
-                    int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 100);//we need +2 to skip the carriages.
-                    int colAfterStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 31).ElementAt(cp) * 100);
-                    int colAfterEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 31).ElementAt(cp) * 100);
-                    int colBeforeStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 30).ElementAt(cp) * 100);
-                    int colBeforeEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 30).ElementAt(cp) * 100);
+                    int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 2).ElementAt(cp) * 10);//- sign is Varian Scale conversion. 
+                    int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 10);//we need +2 to skip the carriages.
+                    int colAfterStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 31).ElementAt(cp) * 10);
+                    int colAfterEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 31).ElementAt(cp) * 10);
+                    int colBeforeStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 30).ElementAt(cp) * 10);
+                    int colBeforeEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 30).ElementAt(cp) * 10);
 
                     //determine delimiter for first 5
                     int lowerFluenceStart = colStart > colBeforeStart ? colStart : colBeforeStart;
                     int upperFluenceStart = colStart > colAfterStart ? colStart : colAfterStart;
                     int lowerFluenceEnd = colEnd < colBeforeEnd ? colEnd : colBeforeEnd;
                     int upperFluenceEnd = colEnd < colAfterEnd ? colEnd : colAfterEnd;
-                    int rowStart = i * 100;
-                    for (int ii = 0; ii < 50; ii++)//add the MU for 5 mm
+                    int rowStart = i * 10;
+                    for (int ii = 0; ii < 5; ii++)//add the MU for 5 mm
                     {
                         for (int iii = lowerFluenceStart; iii < lowerFluenceEnd; iii++)
                         {
                             fluence[iii, rowStart + ii] += muCurrent - muStart;
                         }
                     }
-                    for (int ii = 50; ii < 100; ii++)
+                    for (int ii = 5; ii < 10; ii++)
                     {
                         for (int iii = upperFluenceStart; iii < upperFluenceEnd; iii++)
                         {
@@ -892,6 +902,47 @@ namespace TrajectoryLog.NET
                 //    fluence[i, 100] = 20;
                 //    fluence[200, i] = 40;
                 //}
+            }
+            else if (mLCModel == MLCModelEnum.NDS120 || mLCModel == MLCModelEnum.NDS120HD)
+            {
+                //loop through leaves from bottom of the field.
+                double rowStart = mLCModel == MLCModelEnum.NDS120 ? 0.0 :90.0;
+                for (int i = 0; i < 60; i++)
+                {
+                    //float[0,*] is x1 leaf, float [1,*] is x2 leaf.
+                    //X1 leaves in trajectory log start after all x2 leaves.
+                    int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(i + 62).ElementAt(cp) * 10);
+                    int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 10);//+2 to skip the carriages.
+                    //for NDS120, the first 10 leaves are 1cm, next 40 are 0.5cm and next 10 are 1cm. 
+                    //for NDSHD, the first 14 leavs are 0.5cm, next 32 are 0.25cm, and final 14 are 0.5cm
+                    int halfLeafStart = mLCModel == MLCModelEnum.NDS120 ? 10 : 14;
+                    int halfLeafEnd = mLCModel == MLCModelEnum.NDS120 ? 49 : 55;
+                    int step = mLCModel == MLCModelEnum .NDS120 ? 10 : 5;
+                    double halfStep = mLCModel == MLCModelEnum.NDS120 ? 5 : 2.5;
+                    if (i < halfLeafStart || i > halfLeafEnd)
+                    {
+                        for (int ii = 0; ii < step; ii++)
+                        {
+                            for (int iii = colStart; iii < colEnd; iii++)
+                            {
+                                fluence[iii, (int)rowStart + ii] += muCurrent - muStart;
+                            }
+                        }
+                        rowStart += (double)step;
+                    }
+                    else
+                    {
+                        for (int ii = 0; ii < halfStep; ii++)
+                        {
+                            for (int iii = colStart; iii < colEnd; iii++)
+                            {
+                                fluence[iii, (int)rowStart + ii] += muCurrent - muStart;
+                            }
+                        }
+                        rowStart += halfStep;
+                    }
+
+                }
             }
             else
             {
