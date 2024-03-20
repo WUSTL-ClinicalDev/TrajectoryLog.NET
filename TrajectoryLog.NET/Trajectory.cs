@@ -20,6 +20,9 @@ namespace TrajectoryLog.NET
     public static class TrajectoryAPI
     {
         #region Statics
+        /// <summary>
+        /// Definitions of log parts and memory allocation (from the Trajectory Log File Specification Guide). 
+        /// </summary>
         public static Dictionary<string, int> LogSizes = new Dictionary<string, int>()
         {
             { "Signature",16 },
@@ -48,6 +51,9 @@ namespace TrajectoryLog.NET
         //    {"Energy", 7},
         //    {"BeamName", 256}
         //};
+        /// <summary>
+        /// SubBeam Components
+        /// </summary>
         public static Dictionary<string, int> SubbeamSizes = new Dictionary<string, int>
         {
             {"cp",4 },
@@ -61,10 +67,16 @@ namespace TrajectoryLog.NET
         private static int headerReserveSize = 0;
         #endregion
         #region APIFunctions
+        /// <summary>
+        /// Enables Console Writing for debugging.
+        /// </summary>
         public static void EnableDebug()
         {
             bDebug = true;
         }
+        /// <summary>
+        /// Disables Console Writing output.
+        /// </summary>
         public static void DisableDebug()
         {
             bDebug = false;
@@ -325,7 +337,11 @@ namespace TrajectoryLog.NET
             }
             return tLog;
         }
-
+        /// <summary>
+        /// Exports trajectory log file to CSV
+        /// </summary>
+        /// <param name="tlog">Log file to be serialized and saved.</param>
+        /// <returns></returns>
         public static bool ToCSV(Specs.TrajectoryLogInfo tlog)
         {
             SaveFileDialog sfd = new SaveFileDialog();
@@ -465,6 +481,11 @@ namespace TrajectoryLog.NET
             }
             return fluence;
         }
+        /// <summary>
+        /// Build Simple PDF Report of Trajectory Log Analysis
+        /// </summary>
+        /// <param name="tlog">Trajectory Log to analyze</param>
+        /// <returns>Gantry, MU and MLC statistics and fluence images.</returns>
         public static bool PublishPDF(Specs.TrajectoryLogInfo tlog)
         {
             //Initialize Flow Document
@@ -472,22 +493,72 @@ namespace TrajectoryLog.NET
             flowDocument.Blocks.Add(new Paragraph(new Run($"Trajectory report for {tlog.Header.MetaData.BeamName}")) { FontWeight = FontWeights.Bold, Margin = new Thickness(5) });
             flowDocument.Blocks.Add(new Paragraph(new Run("RMS Results")) { FontWeight = FontWeights.Bold, Margin = new Thickness(5) });
             //include RMS data for Gantry, Collimator, Couch
-            double gantryRMS = CalculateRMS(tlog.Header.AxisData.GantryRtnActual, tlog.Header.AxisData.GantryRtnExpected, "Gantry");
-            double collRMS = CalculateRMS(tlog.Header.AxisData.CollRtnActual, tlog.Header.AxisData.CollRtnExpected, "Collimator");
-            double mlcRMS = CalculateRMS(tlog.Header.AxisData.MLCAct, tlog.Header.AxisData.MLCExp, "MLC");
+            double gantryMax = 0.0;
+            double gantryMaxLoc = 0.0;
+            double gantryRMS = CalculateRMS(tlog.Header.AxisData.GantryRtnActual, tlog.Header.AxisData.GantryRtnExpected, "Gantry",out gantryMax, out gantryMaxLoc);
+            double muMax = 0.0;
+            double muMaxLoc = 0.0;
+            double muRMS = CalculateRMS(tlog.Header.AxisData.MUAct, tlog.Header.AxisData.MUExp, "MU", out muMax, out muMaxLoc);
+            double mlcMax = 0.0;
+            double mlcMaxLoc = 0.0;
+            double mlcRMS = CalculateRMS(tlog.Header.AxisData.MLCAct, tlog.Header.AxisData.MLCExp, "MLC", out mlcMax, out mlcMaxLoc);
+            string mlcMaxNum = String.Empty;// Convert.ToInt16(mlcMaxLoc);
+            if(tlog.Header.MLCModel == MLCModelEnum.SX2)
+            {
+                if (mlcMaxLoc > 58)
+                {
+                    mlcMaxNum =$"Leaf {mlcMaxLoc - 58} X1 Bank";
+                }
+                else
+                {
+                    mlcMaxNum = $"Leaf {mlcMaxLoc-1} X2 Bank";
+                }
+            }
+            else
+            {
+                if (mlcMaxLoc > 61)
+                {
+                    mlcMaxNum = $"Leaf {mlcMaxLoc - 61} X1 Bank";
+                }
+                else
+                {
+                    mlcMaxNum = $"leaf {mlcMaxLoc - 1} X2 Bank";
+                }
+            }
             StackPanel rmsSP = new StackPanel();
             rmsSP.Children.Add(new TextBlock
             {
-                Text = $"Gantry RMS: {gantryRMS} [deg]", Margin=new Thickness(5)
+                Text = "Gantry: ", FontWeight= FontWeights.Bold, FontSize=14
             });
             rmsSP.Children.Add(new TextBlock
             {
-                Text = $"Collimator RMS: {collRMS} [deg]",
+                Text = $"\tMax deviation: {gantryMax:F2}[deg] at {gantryMaxLoc} deg", Margin = new Thickness(5)
+            });
+            rmsSP.Children.Add(new TextBlock
+            {
+                Text = $"\tGantry RMS: {gantryRMS:F3} [deg]", Margin=new Thickness(5)
+            });
+            rmsSP.Children.Add(new TextBlock
+            {
+                Text = $"MU:",
+                FontWeight = FontWeights.Bold,
+                FontSize = 14
+            });
+            rmsSP.Children.Add(new TextBlock
+            {
+                Text = $"\tMax Deviation: {muMax:F3}MU at {muMaxLoc:F2}MU",
                 Margin = new Thickness(5)
             });
             rmsSP.Children.Add(new TextBlock
             {
-                Text = $"Average MLC RMS: {mlcRMS} [mm]",
+                Text = $"\tMU RMS: {muRMS:F3} [MU]",
+                Margin = new Thickness(5)
+            });
+            rmsSP.Children.Add(new TextBlock { Text = "MLC: ", FontWeight = FontWeights.Bold, FontSize = 14 });
+            rmsSP.Children.Add(new TextBlock { Text = $"\tMax Deviation: {mlcMax:F3} {mlcMaxNum}", Margin = new Thickness(5) });
+            rmsSP.Children.Add(new TextBlock
+            {
+                Text = $"\tAverage MLC RMS: {mlcRMS:F3} [cm]",
                 Margin = new Thickness(5)
             });
 
@@ -533,8 +604,14 @@ namespace TrajectoryLog.NET
         }
 
 
+
         #endregion
         #region Helpers
+        /// <summary>
+        /// Metadata strings will sometimes require the removal of padding or new line characters.
+        /// </summary>
+        /// <param name="logReader"></param>
+        /// <returns></returns>
         private static MetaData ConvertMetaData(BinaryReader logReader)
         {
             var metaData = new MetaData();
@@ -569,7 +646,14 @@ namespace TrajectoryLog.NET
             //}
             return metaData;
         }
-
+        /// <summary>
+        /// Iterate through all samples in an axis and axes and write data from each axis. 
+        /// </summary>
+        /// <param name="axisEnumeration"></param>
+        /// <param name="samplesPerAxis"></param>
+        /// <param name="numberOfSnapshots"></param>
+        /// <param name="axisData"></param>
+        /// <param name="logReader"></param>
         private static void CollectAxisData(int[] axisEnumeration, int[] samplesPerAxis, int numberOfSnapshots, AxisData axisData, BinaryReader logReader)
         {
             //set up the lists first;
@@ -912,6 +996,14 @@ namespace TrajectoryLog.NET
                 }
             }
         }
+        /// <summary>
+        /// Convert numerical data in each axis to readable values. 
+        /// </summary>
+        /// <param name="snapshot"></param>
+        /// <param name="sampleCount"></param>
+        /// <param name="expected"></param>
+        /// <param name="actual"></param>
+        /// <param name="logReader"></param>
         private static void GetAxisData(int snapshot, int sampleCount, List<float[]> expected, List<float[]> actual, BinaryReader logReader)
         {
             //loop through number of samples
@@ -922,6 +1014,15 @@ namespace TrajectoryLog.NET
             }
 
         }
+        /// <summary>
+        /// Translate MLC information to fluence.
+        /// </summary>
+        /// <param name="mLCModel"></param>
+        /// <param name="mlcCollections"></param>
+        /// <param name="muStart"></param>
+        /// <param name="muCurrent"></param>
+        /// <param name="cp"></param>
+        /// <param name="fluence"></param>
         private static void AddFluenceFromMLCData(MLCModelEnum mLCModel, List<float[]> mlcCollections, float muStart, float muCurrent, int cp, ref double[,] fluence)
         {
             if (mLCModel == MLCModelEnum.SX2)
@@ -1019,22 +1120,37 @@ namespace TrajectoryLog.NET
                 throw new NotImplementedException();
             }
         }
-        private static double CalculateRMS(List<float[]> actual, List<float[]> expected, string parameter)
+        /// <summary>
+        /// Retrieve RMS devations from trajectory log axis data.
+        /// </summary>
+        /// <param name="actual"></param>
+        /// <param name="expected"></param>
+        /// <param name="parameter"></param>
+        /// <param name="maxDiff"></param>
+        /// <param name="maxDiffLoc"></param>
+        /// <returns></returns>
+        private static double CalculateRMS(List<float[]> actual, List<float[]> expected, string parameter, out double maxDiff, out double maxDiffLoc)
         {
             if (parameter != "MLC")
             {
                 var actualData = actual.First();
                 var expectedData = expected.First();
                 List<double> squares = new List<double>();
+                List<Tuple<double, double>> differences = new List<Tuple<double, double>>();
                 for (int i = 0; i < actualData.Length; i++)
                 {
                     squares.Add((actualData[i] - expectedData[i]) * (actualData[i] - expectedData[i]));
+                    differences.Add(new Tuple<double, double>(actualData[i] - expectedData[i], actualData[i]));
                 }
+                var maxTuple = differences.OrderByDescending(d => Math.Abs(d.Item1)).First();
+                maxDiff = maxTuple.Item1;
+                maxDiffLoc = maxTuple.Item2;
                 return Math.Sqrt(squares.Average());
             }
             else
             {
                 List<double> squares = new List<double>();
+                List<Tuple<double, double>> differences = new List<Tuple<double, double>>();
                 for (int i = 2; i < actual.Count(); i++)
                 {
                     List<double> leafSquares = new List<double>();
@@ -1043,9 +1159,13 @@ namespace TrajectoryLog.NET
                     for (int j = 0; j < actualData.Length; j++)
                     {
                         leafSquares.Add((actualData[j] - expectedData[j]) * (actualData[j] - expectedData[j]));
+                        differences.Add(new Tuple<double, double>(actualData[j] - expectedData[j], i));
                     }
                     squares.Add(Math.Sqrt(leafSquares.Average()));
                 }
+                var maxTuple = differences.OrderByDescending(d => Math.Abs(d.Item1)).First();
+                maxDiff = maxTuple.Item1;
+                maxDiffLoc = maxTuple.Item2;
                 return squares.Average();
             }
         }
@@ -1074,7 +1194,6 @@ namespace TrajectoryLog.NET
             //build the bitmapsource.
             return BitmapSource.Create(fluence.GetLength(1), fluence.GetLength(0), 25.4, 25.4, format, null, image_bytes, stride);
         }
-
         #endregion
     }
 

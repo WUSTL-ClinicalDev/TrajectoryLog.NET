@@ -56,5 +56,15 @@
     <Compile Include="TrajectoryLog.Specifications\TrajectoryHeader.cs" />
     <Compile Include="TrajectoryLog.Specifications\TrajectoryLogInfo.cs" />
   </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <Content Include="img\Code_CSVExport.PNG" />
+    <Content Include="img\Code_Fluence.PNG" />
+    <Content Include="img\Code_LoadLog.PNG" />
+    <Content Include="img\Code_PublishPDF.PNG" />
+    <Content Include="img\Code_Using.PNG" />
+    <Content Include="img\SampleCSV.PNG" />
+    <Content Include="img\SampleReport.PNG" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

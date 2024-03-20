@@ -18,29 +18,29 @@ namespace TrajectoryLog.NET.Client
             ofd.Filter = "Trajectory Log File (*.bin)|*.bin";
             TrajectoryAPI.EnableDebug();
             TrajectorySpecifications.TrajectoryLogInfo locallog = null;
-            if(ofd.ShowDialog() == true)
+            if (ofd.ShowDialog() == true)
             {
                 locallog = TrajectoryAPI.LoadLog(ofd.FileName);
             }
             //testing fluence export
-            var actualFluence = TrajectoryAPI.BuildFluence(locallog,"Actual");
+            var actualFluence = TrajectoryAPI.BuildFluence(locallog, "Actual");
             var expectedFluence = TrajectoryAPI.BuildFluence(locallog, "Expected");
-           WriteFluence(actualFluence);
-           WriteFluence(expectedFluence);
+            //WriteFluence(actualFluence);
+            //WriteFluence(expectedFluence);
             Console.WriteLine("Do you want to write .csv? (y/n)");
             if (Console.ReadLine().Trim().Equals("y", StringComparison.OrdinalIgnoreCase))
             {
                 TrajectoryAPI.ToCSV(locallog);
             }
-            //TrajectoryAPI.PublishPDF(locallog);
+            TrajectoryAPI.PublishPDF(locallog);
             Console.ReadLine();
         }
 
         private static void WriteFluence(double[,] actualFluence)
         {
             SaveFileDialog sfd = new SaveFileDialog();
-            sfd.Filter = "CSV File (*.cvs)|*.csv";
-            if(sfd.ShowDialog() == true)
+            sfd.Filter = "CSV File (*.csv)|*.csv";
+            if (sfd.ShowDialog() == true)
             {
                 using (StreamWriter sw = new StreamWriter(sfd.FileName))
                 {
