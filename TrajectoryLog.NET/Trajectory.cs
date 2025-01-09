@@ -1044,13 +1044,14 @@ namespace TrajectoryLog.NET
                     //Leaf 86->114 Distal Bank X1
                     //no need to ever use 29, 57, 86, or 114 as they are out of the 28x28 field size.                          
                     //first 5mm
+
                     int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 2).ElementAt(cp) * 10);//- sign is Varian Scale conversion. 
                     int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 10);//we need +2 to skip the carriages.
                     int colAfterStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 31).ElementAt(cp) * 10);
                     int colAfterEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 31).ElementAt(cp) * 10);
                     int colBeforeStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 30).ElementAt(cp) * 10);
                     int colBeforeEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 30).ElementAt(cp) * 10);
-
+                    int rows = fluence.GetLength(1);
                     //determine delimiter for first 5
                     int lowerFluenceStart = colStart > colBeforeStart ? colStart : colBeforeStart;
                     int upperFluenceStart = colStart > colAfterStart ? colStart : colAfterStart;
@@ -1061,14 +1062,14 @@ namespace TrajectoryLog.NET
                     {
                         for (int iii = lowerFluenceStart; iii < lowerFluenceEnd; iii++)
                         {
-                            fluence[iii, rowStart + ii] += muCurrent - muStart;
+                            fluence[iii, rows-(rowStart + ii)] += muCurrent - muStart;
                         }
                     }
                     for (int ii = 5; ii < 10; ii++)
                     {
                         for (int iii = upperFluenceStart; iii < upperFluenceEnd; iii++)
                         {
-                            fluence[iii, rowStart + ii] += muCurrent - muStart;
+                            fluence[iii, rows-(rowStart + ii)] += muCurrent - muStart;
                         }
                     }
                 }
@@ -1124,11 +1125,12 @@ namespace TrajectoryLog.NET
                     //int colStart = fluence.GetLength(0) / 2 + Convert.ToInt32(leafPositions[0, i] * 1) * 2;//do not need (-) sign as not in Varian Scale conversion. 
                     int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 20);
                     //int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(leafPositions[1, i] * 1) * 2;//we need +2 to skip the carriages.
+                    int rows = fluence.GetLength(1);
                     for (int j = currentRow; j < rowEnd; j++)//row loop
                     {
                         for (int jj = colStart; jj < colEnd; jj++)
                         {
-                            fluence[jj, j] += muCurrent - muStart;
+                            fluence[jj, rows-j] += muCurrent - muStart;
                         }
                     }
                     currentRow = rowEnd;
