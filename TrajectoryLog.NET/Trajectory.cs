@@ -460,12 +460,17 @@ namespace TrajectoryLog.NET
         /// </returns>
         public static double[,] BuildFluence(Specs.TrajectoryLogInfo tlog, string MLCstring)
         {
-            int fieldX = 400;
-            int fieldY = 400;
+            int fieldX = 800;
+            int fieldY = 800;
             if (tlog.Header.MLCModel == MLCModelEnum.SX2)
             {
                 fieldX = 280;
                 fieldY = 280;
+            }
+            if(tlog.Header.MLCModel == MLCModelEnum.NDS120HD)
+            {
+                fieldX = 440;
+                fieldY = 800;
             }
             double[,] fluence = new double[fieldY, fieldX];
             float muStart = 0f;
@@ -576,8 +581,9 @@ namespace TrajectoryLog.NET
             grid.Children.Add(tb2);
             var actualFluence = BuildFluence(tlog, "Actual");
             var expectedFluence = BuildFluence(tlog, "Expected");
-            BitmapSource actualImageSource = BuildFluenceImage(actualFluence);
-            BitmapSource expectedImageSource = BuildFluenceImage(expectedFluence);
+            double res = tlog.Header.MLCModel == MLCModelEnum.SX2 ? 25.4 : 50.8;
+            BitmapSource actualImageSource = BuildFluenceImage(actualFluence, res);
+            BitmapSource expectedImageSource = BuildFluenceImage(expectedFluence, res);
             Image actualImage = new Image { Source = actualImageSource, Width = 300, Height = 300, Margin = new Thickness(5) };
             Image expectedImage = new Image { Source = expectedImageSource, Width = 300, Height = 300, Margin = new Thickness(5) };
             Grid.SetRow(actualImage, 1);
@@ -1076,44 +1082,94 @@ namespace TrajectoryLog.NET
             }
             else if (mLCModel == MLCModelEnum.NDS120 || mLCModel == MLCModelEnum.NDS120HD)
             {
+                bool isEdge = mLCModel == MLCModelEnum.NDS120HD;
                 //loop through leaves from bottom of the field.
-                double rowStart = mLCModel == MLCModelEnum.NDS120 ? 0.0 : 90.0;
+                //starting from the bottom at position 280
+                //leaf model behavior: 
+                //Edge -> 1-14: 0.5cm
+                //      -> 15 - 46: 0.25cm
+                //      -> 47 - 60: 0.5cm
+                //Standard Millennium -> 1-10: 1.0cm
+                //      -> 11-50: 0.5cm
+                //      -> 51-60: 1.0cm
+                //Leaf 1 -> 28  Proximal Bank X2
+                //all leaf widths multiplied by 2 in order to keep integer values. 
+                int[] mlcWidths = new int[60];
+                for (int i = 0; i < 10; i++)
+                {
+                    mlcWidths[i] = isEdge ? 10 : 20;
+                }
+                for (int i = 10; i < 14; i++)
+                {
+                    mlcWidths[i] = isEdge ? 10 : 10;
+                }
+                for (int i = 14; i < 46; i++)
+                {
+                    mlcWidths[i] = isEdge ? 5 : 10;
+                }
+                for (int i = 46; i < 50; i++)
+                {
+                    mlcWidths[i] = isEdge ? 10 : 10;
+                }
+                for (int i = 50; i < 60; i++)
+                {
+                    mlcWidths[i] = isEdge ? 10 : 20;
+                }
+                //loop through MLC
+                int currentRow = 0;
                 for (int i = 0; i < 60; i++)
                 {
-                    //float[0,*] is x1 leaf, float [1,*] is x2 leaf.
-                    //X1 leaves in trajectory log start after all x2 leaves.
-                    int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(i + 62).ElementAt(cp) * 10);
-                    int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 10);//+2 to skip the carriages.
-                    //for NDS120, the first 10 leaves are 1cm, next 40 are 0.5cm and next 10 are 1cm. 
-                    //for NDSHD, the first 14 leavs are 0.5cm, next 32 are 0.25cm, and final 14 are 0.5cm
-                    int halfLeafStart = mLCModel == MLCModelEnum.NDS120 ? 10 : 14;
-                    int halfLeafEnd = mLCModel == MLCModelEnum.NDS120 ? 49 : 55;
-                    int step = mLCModel == MLCModelEnum.NDS120 ? 10 : 5;
-                    double halfStep = mLCModel == MLCModelEnum.NDS120 ? 5 : 2.5;
-                    if (i < halfLeafStart || i > halfLeafEnd)
+                    int rowEnd = currentRow + mlcWidths[i];
+                    int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(i + 62).ElementAt(cp) * 20);
+                    //int colStart = fluence.GetLength(0) / 2 + Convert.ToInt32(leafPositions[0, i] * 1) * 2;//do not need (-) sign as not in Varian Scale conversion. 
+                    int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 20);
+                    //int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(leafPositions[1, i] * 1) * 2;//we need +2 to skip the carriages.
+                    for (int j = currentRow; j < rowEnd; j++)//row loop
                     {
-                        for (int ii = 0; ii < step; ii++)
+                        for (int jj = colStart; jj < colEnd; jj++)
                         {
-                            for (int iii = colStart; iii < colEnd; iii++)
-                            {
-                                fluence[iii, (int)rowStart + ii] += muCurrent - muStart;
-                            }
+                            fluence[jj, j] += muCurrent - muStart;
                         }
-                        rowStart += (double)step;
                     }
-                    else
-                    {
-                        for (int ii = 0; ii < halfStep; ii++)
-                        {
-                            for (int iii = colStart; iii < colEnd; iii++)
-                            {
-                                fluence[iii, (int)rowStart + ii] += muCurrent - muStart;
-                            }
-                        }
-                        rowStart += halfStep;
-                    }
-
+                    currentRow = rowEnd;
                 }
+                //double rowStart = mLCModel == MLCModelEnum.NDS120 ? 0.0 : 90.0;
+                //for (int i = 0; i < 60; i++)
+                //{
+                //    //float[0,*] is x1 leaf, float [1,*] is x2 leaf.
+                //    //X1 leaves in trajectory log start after all x2 leaves.
+                //    int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(i + 62).ElementAt(cp) * 10);
+                //    int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 10);//+2 to skip the carriages.
+                //    //for NDS120, the first 10 leaves are 1cm, next 40 are 0.5cm and next 10 are 1cm. 
+                //    //for NDSHD, the first 14 leavs are 0.5cm, next 32 are 0.25cm, and final 14 are 0.5cm
+                //    int halfLeafStart = mLCModel == MLCModelEnum.NDS120 ? 10 : 14;
+                //    int halfLeafEnd = mLCModel == MLCModelEnum.NDS120 ? 49 : 55;
+                //    int step = mLCModel == MLCModelEnum.NDS120 ? 10 : 5;
+                //    double halfStep = mLCModel == MLCModelEnum.NDS120 ? 5 : 2.5;
+                //    if (i < halfLeafStart || i > halfLeafEnd)
+                //    {
+                //        for (int ii = 0; ii < step; ii++)
+                //        {
+                //            for (int iii = colStart; iii < colEnd; iii++)
+                //            {
+                //                fluence[iii, (int)rowStart + ii] += muCurrent - muStart;
+                //            }
+                //        }
+                //        rowStart += (double)step;
+                //    }
+                //    else
+                //    {
+                //        for (int ii = 0; ii < halfStep; ii++)
+                //        {
+                //            for (int iii = colStart; iii < colEnd; iii++)
+                //            {
+                //                fluence[iii, (int)rowStart + ii] += muCurrent - muStart;
+                //            }
+                //        }
+                //        rowStart += halfStep;
+                //    }
+
+                //}
             }
             else
             {
@@ -1169,7 +1225,7 @@ namespace TrajectoryLog.NET
                 return squares.Average();
             }
         }
-        private static BitmapSource BuildFluenceImage(double[,] fluence)
+        private static BitmapSource BuildFluenceImage(double[,] fluence, double res)
         {
             double[] flat_pixels = new double[fluence.GetLength(0) * fluence.GetLength(1)];
             //lay out pixels into single array
@@ -1184,7 +1240,7 @@ namespace TrajectoryLog.NET
             var drr_max = flat_pixels.Max();
             var drr_min = flat_pixels.Min();
             PixelFormat format = PixelFormats.Gray8;//low res image, but only 1 byte per pixel. 
-            int stride = (fluence.GetLength(1) * format.BitsPerPixel + 7) / 8;
+            int stride = (fluence.GetLength(0) * format.BitsPerPixel + 7) / 8;
             byte[] image_bytes = new byte[stride * fluence.GetLength(0)];
             for (int i = 0; i < flat_pixels.Length; i++)
             {
@@ -1192,7 +1248,7 @@ namespace TrajectoryLog.NET
                 image_bytes[i] = Convert.ToByte(255 * ((value - drr_min) / (drr_max - drr_min)));
             }
             //build the bitmapsource.
-            return BitmapSource.Create(fluence.GetLength(1), fluence.GetLength(0), 25.4, 25.4, format, null, image_bytes, stride);
+            return BitmapSource.Create(fluence.GetLength(0), fluence.GetLength(1), res, res, format, null, image_bytes, stride);
         }
         #endregion
     }
