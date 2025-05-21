@@ -1051,7 +1051,7 @@ namespace TrajectoryLog.NET
                     int colAfterEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 31).ElementAt(cp) * 10);
                     int colBeforeStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 30).ElementAt(cp) * 10);
                     int colBeforeEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 30).ElementAt(cp) * 10);
-                    int rows = fluence.GetLength(1);
+                    int rows = fluence.GetLength(1)-1;
                     //determine delimiter for first 5
                     int lowerFluenceStart = colStart > colBeforeStart ? colStart : colBeforeStart;
                     int upperFluenceStart = colStart > colAfterStart ? colStart : colAfterStart;
