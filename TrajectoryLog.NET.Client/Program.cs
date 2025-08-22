@@ -22,9 +22,13 @@ namespace TrajectoryLog.NET.Client
             {
                 locallog = TrajectoryAPI.LoadLog(ofd.FileName);
             }
+            if (locallog.Header.Subbeams.Count() > 1)
+            {
+                TrajectoryAPI.SplitLogBeams(locallog);
+            }
             //testing fluence export
-            var actualFluence = TrajectoryAPI.BuildFluence(locallog, "Actual");
-            var expectedFluence = TrajectoryAPI.BuildFluence(locallog, "Expected");
+            //var actualFluence = TrajectoryAPI.BuildFluence(locallog, "Actual");
+            //var expectedFluence = TrajectoryAPI.BuildFluence(locallog, "Expected");
             //WriteFluence(actualFluence);
             //WriteFluence(expectedFluence);
             Console.WriteLine("Do you want to write .csv? (y/n)");

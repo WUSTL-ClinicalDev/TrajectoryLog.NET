@@ -50,7 +50,6 @@ namespace TrajectoryLog.NET.TrajectorySpecifications.AxisHelpers
         public List<float[]> TrackingPhaseAct { get; set; }
         public List<float[]> TCIExp { get; set; } //TrackingConformityIndexExpected
         public List<float[]> TCIAct { get; set; } //TrackingConformityIndexActual
-
         public AxisData()
         {
             CollRtnExpected = new List<float[]>();

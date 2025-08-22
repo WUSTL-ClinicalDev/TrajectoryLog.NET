@@ -126,53 +126,6 @@ namespace TrajectoryLog.NET
                                 for (int i = 0; i < tLog.Header.NumberOfAxesSampled; i++)
                                 {
                                     tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //switch (i)
-                                    //{
-                                    //    case 0://coll
-                                    //    case 1://gantry
-                                    //    case 2://y1
-                                    //    case 3://y2
-                                    //    case 4://x1
-                                    //    case 5://x2
-                                    //    case 6://vrt
-                                    //    case 7://lng
-                                    //    case 8://lat
-                                    //    case 9://rtn
-                                    //    case 10://pit
-                                    //    case 11://rol
-                                    //        tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //        break;
-                                    //    case 12://mu
-                                    //        tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //        break;
-                                    //    case 13://beam hold
-                                    //        tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //        break;
-                                    //    case 14://control point
-                                    //        tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //        break;
-                                    //    case 15://mlc
-                                    //        tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //        break;
-                                    //    case 16://target position
-                                    //        tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //        break;
-                                    //    case 17://tracking target
-                                    //        tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //        break;
-                                    //    case 18://tracking base
-                                    //        tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //        break;
-                                    //    case 19://tracking phase
-                                    //        tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //        break;
-                                    //    case 20://racking conformity index
-                                    //        tLog.Header.AxisEnumeration[i] = BitConverter.ToInt32(logReader.ReadBytes(data.Value), 0);
-                                    //        break;
-                                    //    default:
-                                    //        tLog.HeaderError.Append($"Invalied Axis Enumeration {i}");
-                                    //        break;
-                                    //}
                                 }
                                 if (bDebug) { Console.WriteLine($"{data.Key}: [{String.Join(" ", tLog.Header.AxisEnumeration)}]"); }
                             }
@@ -246,8 +199,10 @@ namespace TrajectoryLog.NET
                                             if (bDebug) { Console.WriteLine($"{sub.Key}: {sb.Seq}"); }
                                             break;
                                         case "name":
-                                            sb.Name = BitConverter.ToString(logReader.ReadBytes(sub.Value), 0);
+                                            string localName = Encoding.ASCII.GetString(logReader.ReadBytes(sub.Value - 32));
+                                            sb.Name = localName.Replace("\0", "");// logReader.ReadBytes(sub.Value), 0);
                                             if (bDebug) { Console.WriteLine($"{sub.Key}: {sb.Name}"); }
+                                            logReader.ReadBytes(32);//read out reserved.
                                             break;
 
                                     }
@@ -257,76 +212,6 @@ namespace TrajectoryLog.NET
                             break;
                         case "Snapshot":
                             CollectAxisData(tLog.Header.AxisEnumeration, tLog.Header.SamplesPerAxis, tLog.Header.NumberOfSnapshots, tLog.Header.AxisData, logReader);
-                            //foreach (var axis in tLog.Header.AxisEnumeration)
-                            //{
-                            //    switch (axis)
-                            //    {
-                            //        case 0://collimator
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.CollRtnExpected, tLog.Header.AxisData.CollRtnActual, logReader, "Collimator");
-                            //            break;
-                            //        case 1: //gantry
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.GantryRtnExpected, tLog.Header.AxisData.GantryRtnActual, logReader, "Gantry");
-                            //            break;
-                            //        case 2: //y1
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.Y1Expected, tLog.Header.AxisData.Y1Actual, logReader, "y1");
-                            //            break;
-                            //        case 3: //y2
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.Y2Expected, tLog.Header.AxisData.Y2Actual, logReader, "y2");
-                            //            break;
-                            //        case 4: //x1
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.X1Expected, tLog.Header.AxisData.X1Actual, logReader, "x1");
-                            //            break;
-                            //        case 5: //x2
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.X2Expected, tLog.Header.AxisData.X2Actual, logReader, "x2");
-                            //            break;
-                            //        case 6: //Couch Vrt
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.CouchVrtExp, tLog.Header.AxisData.CouchVrtAct, logReader, "Couch Vrt");
-                            //            break;
-                            //        case 7: //Couch Lng
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.CouchLngExp, tLog.Header.AxisData.CouchLngAct, logReader, "Couch Lng");
-                            //            break;
-                            //        case 8: //Couch Lat
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.CouchLatExp, tLog.Header.AxisData.CouchLatAct, logReader, "Couch Lat");
-                            //            break;
-                            //        case 9: //Couch Rtn
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.CouchRtnExp, tLog.Header.AxisData.CouchRtnAct, logReader, "Couch Rtn");
-                            //            break;
-                            //        case 10: //Couch Pit
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.CouchPitExp, tLog.Header.AxisData.CouchPitAct, logReader, "Couch Pit");
-                            //            break;
-                            //        case 11: //Couch Roll
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.CouchRolExp, tLog.Header.AxisData.CouchRolAct, logReader, "Couch Roll");
-                            //            break;
-                            //        case 12: //MU
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.MUExp, tLog.Header.AxisData.MUAct, logReader, "MU");
-                            //            break;
-                            //        case 13: //Beam Hold
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.BeamHoldExp, tLog.Header.AxisData.BeamHoldAct, logReader, "beam hold");
-                            //            break;
-                            //        case 14: //Ctrl Point
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.ControlPointExp, tLog.Header.AxisData.ControlPointAct, logReader, "Ctrl Point");
-                            //            break;
-                            //        case 15: //MLC
-                            //           CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.MLCExp, tLog.Header.AxisData.MLCAct, logReader, "MLC");
-                            //           break;
-                            //        case 16: //Target Position
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.TargetPositionExp, tLog.Header.AxisData.TargetPositionAct, logReader, "Target Position");
-                            //            break;
-                            //        case 17: //Tracking Target
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.TrackingTargetExp, tLog.Header.AxisData.TrackingTargetAct, logReader, "Tracking target");
-                            //            break;
-                            //        case 18: //Tracking Base
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.TrackingBaseExp, tLog.Header.AxisData.TrackingBaseAct, logReader, "Tracking Base");
-                            //            break;
-                            //        case 19: //Tracking Phase
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.TrackingPhaseExp, tLog.Header.AxisData.TrackingPhaseAct, logReader, "Tracking Phase");
-                            //            break;
-                            //        case 20: //Tracking Conformity Index
-                            //            CollectAxisData(tLog.Header.SamplesPerAxis[axis], tLog.Header.NumberOfSnapshots, tLog.Header.AxisData.TCIExp, tLog.Header.AxisData.TCIAct, logReader, "Tracking Conformity Index");
-                            //            break;
-
-                            //    }
-                            //}
                             break;
                         default:
                             tLog.HeaderError.Append($"Unsupported: {data.Key}");
@@ -337,6 +222,47 @@ namespace TrajectoryLog.NET
             }
             return tLog;
         }
+        public static bool SplitLogBeams(Specs.TrajectoryLogInfo tlog)
+        {
+            int numberOfSubBeams = tlog.Header.Subbeams.Count();
+            if (numberOfSubBeams > 1)
+            {
+                //inialize the list
+                tlog.Header.AxesPerBeam = new List<AxisData>();
+
+            }
+            else
+            {
+                return false;
+            }
+            int startIndex = 0;
+            int endIndex = 0;
+            foreach (var beam in tlog.Header.Subbeams.OrderBy(sb => sb.Seq))
+            {
+                bool isLast = beam.Seq == numberOfSubBeams - 1;
+
+
+                if (!isLast)
+                {
+                    int nextCP = tlog.Header.Subbeams.ElementAt(beam.Seq + 1).CP;
+                    endIndex = tlog.Header.AxisData.ControlPointAct.First().ToList().IndexOf(tlog.Header.AxisData.ControlPointAct.First().FirstOrDefault(cp => cp >= nextCP));
+
+
+                }
+                else
+                {
+                    endIndex = tlog.Header.AxisData.ControlPointAct.First().Length;
+
+                }
+                AxisData ad = IterateAxisData(tlog.Header.AxisEnumeration, tlog.Header.AxisData, startIndex, endIndex);
+                tlog.Header.AxesPerBeam.Add(ad);
+                startIndex = endIndex;
+            }
+            return true;
+        }
+
+
+
         /// <summary>
         /// Exports trajectory log file to CSV
         /// </summary>
@@ -467,7 +393,7 @@ namespace TrajectoryLog.NET
                 fieldX = 280;
                 fieldY = 280;
             }
-            if(tlog.Header.MLCModel == MLCModelEnum.NDS120HD)
+            if (tlog.Header.MLCModel == MLCModelEnum.NDS120HD)
             {
                 fieldX = 440;
                 fieldY = 800;
@@ -500,7 +426,7 @@ namespace TrajectoryLog.NET
             //include RMS data for Gantry, Collimator, Couch
             double gantryMax = 0.0;
             double gantryMaxLoc = 0.0;
-            double gantryRMS = CalculateRMS(tlog.Header.AxisData.GantryRtnActual, tlog.Header.AxisData.GantryRtnExpected, "Gantry",out gantryMax, out gantryMaxLoc);
+            double gantryRMS = CalculateRMS(tlog.Header.AxisData.GantryRtnActual, tlog.Header.AxisData.GantryRtnExpected, "Gantry", out gantryMax, out gantryMaxLoc);
             double muMax = 0.0;
             double muMaxLoc = 0.0;
             double muRMS = CalculateRMS(tlog.Header.AxisData.MUAct, tlog.Header.AxisData.MUExp, "MU", out muMax, out muMaxLoc);
@@ -508,15 +434,15 @@ namespace TrajectoryLog.NET
             double mlcMaxLoc = 0.0;
             double mlcRMS = CalculateRMS(tlog.Header.AxisData.MLCAct, tlog.Header.AxisData.MLCExp, "MLC", out mlcMax, out mlcMaxLoc);
             string mlcMaxNum = String.Empty;// Convert.ToInt16(mlcMaxLoc);
-            if(tlog.Header.MLCModel == MLCModelEnum.SX2)
+            if (tlog.Header.MLCModel == MLCModelEnum.SX2)
             {
                 if (mlcMaxLoc > 58)
                 {
-                    mlcMaxNum =$"Leaf {mlcMaxLoc - 58} X1 Bank";
+                    mlcMaxNum = $"Leaf {mlcMaxLoc - 58} X1 Bank";
                 }
                 else
                 {
-                    mlcMaxNum = $"Leaf {mlcMaxLoc-1} X2 Bank";
+                    mlcMaxNum = $"Leaf {mlcMaxLoc - 1} X2 Bank";
                 }
             }
             else
@@ -533,15 +459,19 @@ namespace TrajectoryLog.NET
             StackPanel rmsSP = new StackPanel();
             rmsSP.Children.Add(new TextBlock
             {
-                Text = "Gantry: ", FontWeight= FontWeights.Bold, FontSize=14
+                Text = "Gantry: ",
+                FontWeight = FontWeights.Bold,
+                FontSize = 14
             });
             rmsSP.Children.Add(new TextBlock
             {
-                Text = $"\tMax deviation: {gantryMax:F2}[deg] at {gantryMaxLoc} deg", Margin = new Thickness(5)
+                Text = $"\tMax deviation: {gantryMax:F2}[deg] at {gantryMaxLoc} deg",
+                Margin = new Thickness(5)
             });
             rmsSP.Children.Add(new TextBlock
             {
-                Text = $"\tGantry RMS: {gantryRMS:F3} [deg]", Margin=new Thickness(5)
+                Text = $"\tGantry RMS: {gantryRMS:F3} [deg]",
+                Margin = new Thickness(5)
             });
             rmsSP.Children.Add(new TextBlock
             {
@@ -1051,7 +981,7 @@ namespace TrajectoryLog.NET
                     int colAfterEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 31).ElementAt(cp) * 10);
                     int colBeforeStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(57 + i + 30).ElementAt(cp) * 10);
                     int colBeforeEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 30).ElementAt(cp) * 10);
-                    int rows = fluence.GetLength(1)-1;
+                    int rows = fluence.GetLength(1) - 1;
                     //determine delimiter for first 5
                     int lowerFluenceStart = colStart > colBeforeStart ? colStart : colBeforeStart;
                     int upperFluenceStart = colStart > colAfterStart ? colStart : colAfterStart;
@@ -1062,14 +992,14 @@ namespace TrajectoryLog.NET
                     {
                         for (int iii = lowerFluenceStart; iii < lowerFluenceEnd; iii++)
                         {
-                            fluence[iii, rows-(rowStart + ii)] += muCurrent - muStart;
+                            fluence[iii, rows - (rowStart + ii)] += muCurrent - muStart;
                         }
                     }
                     for (int ii = 5; ii < 10; ii++)
                     {
                         for (int iii = upperFluenceStart; iii < upperFluenceEnd; iii++)
                         {
-                            fluence[iii, rows-(rowStart + ii)] += muCurrent - muStart;
+                            fluence[iii, rows - (rowStart + ii)] += muCurrent - muStart;
                         }
                     }
                 }
@@ -1130,7 +1060,7 @@ namespace TrajectoryLog.NET
                     {
                         for (int jj = colStart; jj < colEnd; jj++)
                         {
-                            fluence[jj, rows-j] += muCurrent - muStart;
+                            fluence[jj, rows - j] += muCurrent - muStart;
                         }
                     }
                     currentRow = rowEnd;
@@ -1251,6 +1181,191 @@ namespace TrajectoryLog.NET
             }
             //build the bitmapsource.
             return BitmapSource.Create(fluence.GetLength(0), fluence.GetLength(1), res, res, format, null, image_bytes, stride);
+        }
+        private static AxisData IterateAxisData(int[] axisEnumeration, AxisData axisData, int start_index, int end_index)
+        {
+            AxisData ad = new AxisData();
+            foreach (int axis in axisEnumeration)
+            {
+                switch (axis)
+                {
+                    case 0://collimator
+                        float[] coll_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.CollRtnExpected.First(), start_index, coll_exp, 0, end_index - start_index);
+                        ad.CollRtnExpected.Add(coll_exp);
+                        float[] coll_act = new float[end_index - start_index];
+                        Array.Copy(axisData.CollRtnActual.First(), start_index, coll_act, 0, end_index - start_index);
+                        ad.CollRtnActual.Add(coll_act);
+                        break;
+                    case 1://gantry
+                        float[] gantry_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.GantryRtnExpected.First(), start_index, gantry_exp, 0, end_index - start_index);
+                        ad.GantryRtnExpected.Add(gantry_exp);
+                        float[] gantry_act = new float[end_index - start_index];
+                        Array.Copy(axisData.GantryRtnActual.First(), start_index, gantry_act, 0, end_index - start_index);
+                        ad.GantryRtnActual.Add(gantry_act);
+                        break;
+                    case 2://Y1
+                        float[] y1_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.Y1Expected.First(), start_index, y1_exp, 0, end_index - start_index);
+                        ad.Y1Expected.Add(y1_exp);
+                        float[] y1_act = new float[end_index - start_index];
+                        Array.Copy(axisData.Y1Actual.First(), start_index, y1_act, 0, end_index - start_index);
+                        ad.Y1Actual.Add(y1_act);
+                        break;
+                    case 3://Y2
+                        float[] y2_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.Y2Expected.First(), start_index, y2_exp, 0, end_index - start_index);
+                        ad.Y2Expected.Add(y2_exp);
+                        float[] y2_act = new float[end_index - start_index];
+                        Array.Copy(axisData.Y2Actual.First(), start_index, y2_act, 0, end_index - start_index);
+                        ad.Y2Actual.Add(y2_act);
+                        break;
+                    case 4://x1
+                        float[] x1_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.X1Expected.First(), start_index, x1_exp, 0, end_index - start_index);
+                        ad.X1Expected.Add(x1_exp);
+                        float[] x1_act = new float[end_index - start_index];
+                        Array.Copy(axisData.X1Actual.First(), start_index, x1_act, 0, end_index - start_index);
+                        ad.X1Actual.Add(x1_act);
+                        break;
+                    case 5://x2
+                        float[] x2_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.X2Expected.First(), start_index, x2_exp, 0, end_index - start_index);
+                        ad.X2Expected.Add(x2_exp);
+                        float[] x2_act = new float[end_index - start_index];
+                        Array.Copy(axisData.X2Actual.First(), start_index, x2_act, 0, end_index - start_index);
+                        ad.X2Actual.Add(x2_act);
+                        break;
+                    case 6://Couch vrt
+                        float[] vrt_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchVrtExp.First(), start_index, vrt_exp, 0, end_index - start_index);
+                        ad.CouchVrtExp.Add(vrt_exp);
+                        float[] vrt_act = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchVrtAct.First(), start_index, vrt_act, 0, end_index - start_index);
+                        ad.CouchVrtAct.Add(vrt_act);
+                        break;
+                    case 7://Couch Lng
+                        float[] lng_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchLngExp.First(), start_index, lng_exp, 0, end_index - start_index);
+                        ad.CouchLngExp.Add(lng_exp);
+                        float[] lng_act = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchLngAct.First(), start_index, lng_act, 0, end_index - start_index);
+                        ad.CouchLngAct.Add(lng_act);
+                        break;
+                    case 8://Couch Lat
+                        float[] lat_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchLatExp.First(), start_index, lat_exp, 0, end_index - start_index);
+                        ad.CouchLatExp.Add(lat_exp);
+                        float[] lat_act = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchLatAct.First(), start_index, lat_act, 0, end_index - start_index);
+                        ad.CouchLatAct.Add(lat_act);
+                        break;
+                    case 9://Couch Rtn
+                        float[] rtn_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchRtnExp.First(), start_index, rtn_exp, 0, end_index - start_index);
+                        ad.CouchRtnExp.Add(rtn_exp);
+                        float[] rtn_act = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchRtnAct.First(), start_index, rtn_act, 0, end_index - start_index);
+                        ad.CouchRtnAct.Add(rtn_act);
+                        break;
+                    case 10://Couch Pit
+                        float[] pitch_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchPitExp.First(), start_index, pitch_exp, 0, end_index - start_index);
+                        ad.CouchPitExp.Add(pitch_exp);
+                        float[] pitch_act = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchPitAct.First(), start_index, pitch_act, 0, end_index - start_index);
+                        ad.CouchPitAct.Add(pitch_act);
+                        break;
+                    case 11://Couch Rol
+                        float[] rol_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchRolExp.First(), start_index, rol_exp, 0, end_index - start_index);
+                        ad.CouchRolExp.Add(rol_exp);
+                        float[] rol_act = new float[end_index - start_index];
+                        Array.Copy(axisData.CouchRolAct.First(), start_index, rol_act, 0, end_index - start_index);
+                        ad.CouchRolAct.Add(rol_act);
+                        break;
+                    case 40://MU
+                        float[] mu_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.MUExp.First(), start_index, mu_exp, 0, end_index - start_index);
+                        ad.MUExp.Add(mu_exp);
+                        float[] mu_act = new float[end_index - start_index];
+                        Array.Copy(axisData.MUAct.First(), start_index, mu_act, 0, end_index - start_index);
+                        ad.MUAct.Add(mu_act);
+                        break;
+                    case 41://Beam Hold
+                        float[] bh_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.BeamHoldExp.First(), start_index, bh_exp, 0, end_index - start_index);
+                        ad.BeamHoldExp.Add(bh_exp);
+                        float[] bh_act = new float[end_index - start_index];
+                        Array.Copy(axisData.BeamHoldAct.First(), start_index, bh_act, 0, end_index - start_index);
+                        ad.BeamHoldAct.Add(bh_act);
+                        break;
+                    case 42://Control Point
+                        float[] cp_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.ControlPointExp.First(), start_index, cp_exp, 0, end_index - start_index);
+                        ad.ControlPointExp.Add(cp_exp);
+                        float[] cp_act = new float[end_index - start_index];
+                        Array.Copy(axisData.ControlPointAct.First(), start_index, cp_act, 0, end_index - start_index);
+                        ad.ControlPointAct.Add(cp_act);
+                        break;
+                    case 50://MLC
+                        foreach (var mlc_leaf in axisData.MLCExp)
+                        {
+                            float[] mlc_exp = new float[end_index - start_index];
+                            Array.Copy(axisData.MLCExp.First(), start_index, mlc_exp, 0, end_index - start_index);
+                            ad.MLCExp.Add(mlc_exp);
+                        }
+                        foreach (var leaf in axisData.MLCAct)
+                        {
+                            float[] mlcAct = new float[end_index - start_index];
+                            Array.Copy(axisData.MLCAct.First(), start_index, mlcAct, 0, end_index - start_index);
+                            ad.MLCAct.Add(mlcAct);
+                        }
+                        break;
+                    case 60://Target Position
+                        float[] tp_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.TargetPositionExp.First(), start_index, tp_exp, 0, end_index - start_index);
+                        ad.TargetPositionExp.Add(tp_exp);
+                        float[] tp_act = new float[end_index - start_index];
+                        Array.Copy(axisData.TargetPositionAct.First(), start_index, tp_act, 0, end_index - start_index);
+                        ad.TargetPositionAct.Add(tp_act);
+                        break;
+                    case 61://Tracking Target
+                        float[] tt_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.TrackingTargetExp.First(), start_index, tt_exp, 0, end_index - start_index);
+                        ad.TrackingTargetExp.Add(tt_exp);
+                        float[] tt_act = new float[end_index - start_index];
+                        Array.Copy(axisData.TrackingTargetAct.First(), start_index, tt_act, 0, end_index - start_index);
+                        ad.TrackingTargetAct.Add(tt_act);
+                        break;
+                    case 62://Tracking Base
+                        float[] tb_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.TrackingBaseExp.First(), start_index, tb_exp, 0, end_index - start_index);
+                        ad.TrackingBaseExp.Add(tb_exp);
+                        float[] tb_act = new float[end_index - start_index];
+                        Array.Copy(axisData.TrackingBaseAct.First(), start_index, tb_act, 0, end_index - start_index);
+                        ad.TrackingBaseAct.Add(tb_act);
+                        break;
+                    case 63://Tracking Phase
+                        float[] trackp_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.TrackingPhaseExp.First(), start_index, trackp_exp, 0, end_index - start_index);
+                        ad.TrackingPhaseExp.Add(trackp_exp);
+                        float[] trackp_act = new float[end_index - start_index];
+                        Array.Copy(axisData.TrackingPhaseAct.First(), start_index, trackp_act, 0, end_index - start_index);
+                        ad.TrackingPhaseAct.Add(trackp_act);
+                        break;
+                    case 64://Tracking Conformity Index
+                        float[] tci_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.TCIExp.First(), start_index, tci_exp, 0, end_index - start_index);
+                        ad.TCIExp.Add(tci_exp);
+                        float[] tci_act = new float[end_index - start_index];
+                        Array.Copy(axisData.TCIAct.First(), start_index, tci_act, 0, end_index - start_index);
+                        ad.TCIAct.Add(tci_act);
+                        break;
+                }
+            }
+            return ad;
         }
         #endregion
     }

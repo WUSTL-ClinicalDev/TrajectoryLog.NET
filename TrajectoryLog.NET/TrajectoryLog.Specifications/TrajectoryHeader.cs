@@ -27,6 +27,7 @@ namespace TrajectoryLog.NET.TrajectorySpecifications
         //Reserved?
         public List<Subbeam> Subbeams { get; set; }
         public AxisData AxisData { get; set; }
+        public List<AxisData> AxesPerBeam { get; set; }
         public TrajectoryHeader()
         {
             Subbeams = new List<Subbeam>();
