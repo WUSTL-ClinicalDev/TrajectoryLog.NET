@@ -245,7 +245,7 @@ namespace TrajectoryLog.NET
                 if (!isLast)
                 {
                     int nextCP = tlog.Header.Subbeams.ElementAt(beam.Seq + 1).CP;
-                    endIndex = tlog.Header.AxisData.ControlPointAct.First().ToList().IndexOf(tlog.Header.AxisData.ControlPointAct.First().FirstOrDefault(cp => cp >= nextCP));
+                    endIndex = tlog.Header.AxisData.ControlPointAct.First().ToList().IndexOf(tlog.Header.AxisData.ControlPointAct.First().FirstOrDefault(cp => cp > nextCP));
 
 
                 }
@@ -1013,6 +1013,8 @@ namespace TrajectoryLog.NET
             }
             else if (mLCModel == MLCModelEnum.NDS120 || mLCModel == MLCModelEnum.NDS120HD)
             {
+                int rows = fluence.GetLength(1) - 1;
+
                 bool isEdge = mLCModel == MLCModelEnum.NDS120HD;
                 //loop through leaves from bottom of the field.
                 //starting from the bottom at position 280
@@ -1055,7 +1057,6 @@ namespace TrajectoryLog.NET
                     //int colStart = fluence.GetLength(0) / 2 + Convert.ToInt32(leafPositions[0, i] * 1) * 2;//do not need (-) sign as not in Varian Scale conversion. 
                     int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 20);
                     //int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(leafPositions[1, i] * 1) * 2;//we need +2 to skip the carriages.
-                    int rows = fluence.GetLength(1);
                     for (int j = currentRow; j < rowEnd; j++)//row loop
                     {
                         for (int jj = colStart; jj < colEnd; jj++)
@@ -1287,10 +1288,15 @@ namespace TrajectoryLog.NET
                         break;
                     case 40://MU
                         float[] mu_exp = new float[end_index - start_index];
-                        Array.Copy(axisData.MUExp.First(), start_index, mu_exp, 0, end_index - start_index);
-                        ad.MUExp.Add(mu_exp);
                         float[] mu_act = new float[end_index - start_index];
-                        Array.Copy(axisData.MUAct.First(), start_index, mu_act, 0, end_index - start_index);
+                        for (int i = start_index; i < end_index; i++)
+                        {
+                            mu_exp[i - start_index] = axisData.MUExp.First()[i] - axisData.MUExp.First()[start_index];
+                            mu_act[i - start_index] = axisData.MUAct.First()[i] - axisData.MUAct.First()[start_index];
+                        }
+                        //Array.Copy(axisData.MUExp.First(), start_index, mu_exp, 0, end_index - start_index);
+                        ad.MUExp.Add(mu_exp);
+                        //Array.Copy(axisData.MUAct.First(), start_index, mu_act, 0, end_index - start_index);
                         ad.MUAct.Add(mu_act);
                         break;
                     case 41://Beam Hold
@@ -1313,13 +1319,13 @@ namespace TrajectoryLog.NET
                         foreach (var mlc_leaf in axisData.MLCExp)
                         {
                             float[] mlc_exp = new float[end_index - start_index];
-                            Array.Copy(axisData.MLCExp.First(), start_index, mlc_exp, 0, end_index - start_index);
+                            Array.Copy(mlc_leaf, start_index, mlc_exp, 0, end_index - start_index);
                             ad.MLCExp.Add(mlc_exp);
                         }
                         foreach (var leaf in axisData.MLCAct)
                         {
                             float[] mlcAct = new float[end_index - start_index];
-                            Array.Copy(axisData.MLCAct.First(), start_index, mlcAct, 0, end_index - start_index);
+                            Array.Copy(leaf, start_index, mlcAct, 0, end_index - start_index);
                             ad.MLCAct.Add(mlcAct);
                         }
                         break;
