@@ -1374,6 +1374,298 @@ namespace TrajectoryLog.NET
             return ad;
         }
         #endregion
+        #region Research
+        /// <summary>
+        /// Modifies all MLC actual positions by adding the specified offset value
+        /// </summary>
+        /// <param name="tlog">The trajectory log to modify</param>
+        /// <param name="offset">The offset to add to each MLC position (default: 0.5)</param>
+        public static void ModifyMLCActualPositions(TrajectorySpecifications.TrajectoryLogInfo tlog, float offset = 0.05f)
+        {
+            if (tlog?.Header?.AxisData?.MLCAct == null)
+            {
+                Console.WriteLine("Error: No MLC actual data found in trajectory log.");
+                return;
+            }
+
+            // Iterate through each MLC leaf
+            for (int i = 2; i < tlog.Header.AxisData.MLCAct.Count; i++)
+            {
+                float[] leafPositions = tlog.Header.AxisData.MLCAct[i];
+
+                // Modify each snapshot position for this leaf
+                for (int j = 0; j < leafPositions.Length; j++)
+                {
+                    leafPositions[j] += offset;
+                }
+            }
+
+            Console.WriteLine($"Modified {tlog.Header.AxisData.MLCAct.Count} MLC leaves by adding {offset} cm to all actual positions.");
+        }
+        /// <summary>
+        /// Writes a trajectory log to a binary file
+        /// </summary>
+        /// <param name="tlog">The trajectory log to write</param>
+        /// <param name="fileName">Output file path</param>
+        /// <returns>True if successful, false otherwise</returns>
+        public static bool SaveLog(Specs.TrajectoryLogInfo tlog, string fileName)
+        {
+            try
+            {
+                using (BinaryWriter logWriter = new BinaryWriter(new FileStream(fileName, FileMode.Create)))
+                {
+                    // Signature (16 bytes)
+                    byte[] signature = new byte[16];
+                    byte[] sigBytes = Encoding.ASCII.GetBytes(tlog.Header.Signature);
+                    Array.Copy(sigBytes, signature, Math.Min(sigBytes.Length, 16));
+                    logWriter.Write(signature);
+
+                    // Version (16 bytes)
+                    byte[] version = new byte[16];
+                    byte[] verBytes = Encoding.ASCII.GetBytes(tlog.Header.Version);
+                    Array.Copy(verBytes, version, Math.Min(verBytes.Length, 16));
+                    logWriter.Write(version);
+
+                    // Header Size (4 bytes)
+                    logWriter.Write(tlog.Header.HeaderSize);
+
+                    // Sampling Interval MS (4 bytes)
+                    logWriter.Write(tlog.Header.SampleIntervalMS);
+
+                    // Number of Axes Sampled (4 bytes)
+                    logWriter.Write(tlog.Header.NumberOfAxesSampled);
+
+                    // Axis Enumeration (Number of axes * 4 bytes)
+                    for (int i = 0; i < tlog.Header.NumberOfAxesSampled; i++)
+                    {
+                        logWriter.Write(tlog.Header.AxisEnumeration[i]);
+                    }
+
+                    // Samples Per Axis (Number of axes * 4 bytes)
+                    for (int i = 0; i < tlog.Header.NumberOfAxesSampled; i++)
+                    {
+                        logWriter.Write(tlog.Header.SamplesPerAxis[i]);
+                    }
+
+                    // Axis Scale (4 bytes)
+                    logWriter.Write((int)tlog.Header.AxisScale);
+
+                    // Number of Subbeams (4 bytes)
+                    logWriter.Write(tlog.Header.NumberOfSubbeams);
+
+                    // Is Truncated (4 bytes)
+                    logWriter.Write(tlog.Header.IsTruncated);
+
+                    // Number of Snapshots (4 bytes)
+                    logWriter.Write(tlog.Header.NumberOfSnapshots);
+
+                    // MLC Model (4 bytes)
+                    logWriter.Write((int)tlog.Header.MLCModel);
+
+                    // MetaData (variable size - 745 bytes reserved)
+                    WriteMetaData(logWriter, tlog.Header.MetaData, tlog.Header.NumberOfAxesSampled);
+
+                    // Reserved space (1024 - (64 + Number of axes * 8))
+                   // int reservedSize = 1024 - (64 + tlog.Header.NumberOfAxesSampled * 8);
+                   // byte[] reserved = new byte[reservedSize];
+                   // logWriter.Write(reserved);
+
+                    // Subbeams (560 bytes each)
+                    foreach (var subbeam in tlog.Header.Subbeams)
+                    {
+                        // CP (4 bytes)
+                        logWriter.Write(subbeam.CP);
+
+                        // MU (4 bytes)
+                        logWriter.Write(subbeam.Mu);
+
+                        // RadTime (4 bytes)
+                        logWriter.Write(subbeam.RadTime);
+
+                        // Seq (4 bytes)
+                        logWriter.Write(subbeam.Seq);
+
+                        // Name (544 bytes: 512 for name + 32 reserved)
+                        byte[] nameBytes = new byte[512];
+                        byte[] name = Encoding.ASCII.GetBytes(subbeam.Name);
+                        Array.Copy(name, nameBytes, Math.Min(name.Length, 512));
+                        logWriter.Write(nameBytes);
+
+                        // Reserved (32 bytes)
+                        byte[] subbeamReserved = new byte[32];
+                        logWriter.Write(subbeamReserved);
+                    }
+
+                    // Axis Data (Snapshots)
+                    WriteAxisData(tlog.Header.AxisEnumeration, tlog.Header.NumberOfSnapshots, tlog.Header.AxisData, logWriter);
+
+                    // CRC (2 bytes) - calculate on all preceding content
+                    ushort crc = CalculateCRC(fileName);
+                    logWriter.Write(crc);
+                }
+
+                if (bDebug) { Console.WriteLine($"Successfully wrote trajectory log to {fileName}"); }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (bDebug) { Console.WriteLine($"Error writing trajectory log: {ex.Message}"); }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Writes metadata to the binary file with proper padding
+        /// Writes metadata to the binary file with proper padding
+        /// Writes metadata to the binary file with proper padding
+        /// Writes metadata to the binary file
+        /// </summary>
+        private static void WriteMetaData(BinaryWriter logWriter, MetaData metaData, int numberOfAxes)
+        {
+            int reservedSize = 1024 - (64 + numberOfAxes * 8);
+            StringBuilder metaDataString = new StringBuilder();
+
+            metaDataString.AppendLine($"PatientID:{metaData.PatientID}");
+            metaDataString.AppendLine($"PlanName:{metaData.PlanName}");
+            metaDataString.AppendLine($"SOPInstanceUID:{metaData.SOPInstanceUID}");
+            metaDataString.AppendLine($"MUPlanned:{metaData.MUPlanned}");
+            metaDataString.AppendLine($"MURemaining:{metaData.MURemaining}");
+            metaDataString.AppendLine($"Energy:{metaData.Energy}");
+            metaDataString.Append($"BeamName:{metaData.BeamName}");
+
+            byte[] metaBytes = new byte[reservedSize];
+            byte[] metaString = Encoding.UTF8.GetBytes(metaDataString.ToString());
+            Array.Copy(metaString, metaBytes, Math.Min(metaString.Length, reservedSize));
+            logWriter.Write(metaBytes);
+        }
+
+        /// <summary>
+        /// Writes axis data to the binary file
+        /// </summary>
+        private static void WriteAxisData(int[] axisEnumeration, int numberOfSnapshots, AxisData axisData, BinaryWriter logWriter)
+        {
+            // Loop through each snapshot
+            for (int snapshot = 0; snapshot < numberOfSnapshots; snapshot++)
+            {
+                // For each snapshot, write data for each axis in order
+                foreach (int axis in axisEnumeration)
+                {
+                    switch (axis)
+                    {
+                        case 0: // Collimator
+                            WriteAxisSamples(snapshot, axisData.CollRtnExpected, axisData.CollRtnActual, logWriter);
+                            break;
+                        case 1: // Gantry
+                            WriteAxisSamples(snapshot, axisData.GantryRtnExpected, axisData.GantryRtnActual, logWriter);
+                            break;
+                        case 2: // Y1
+                            WriteAxisSamples(snapshot, axisData.Y1Expected, axisData.Y1Actual, logWriter);
+                            break;
+                        case 3: // Y2
+                            WriteAxisSamples(snapshot, axisData.Y2Expected, axisData.Y2Actual, logWriter);
+                            break;
+                        case 4: // X1
+                            WriteAxisSamples(snapshot, axisData.X1Expected, axisData.X1Actual, logWriter);
+                            break;
+                        case 5: // X2
+                            WriteAxisSamples(snapshot, axisData.X2Expected, axisData.X2Actual, logWriter);
+                            break;
+                        case 6: // Couch Vrt
+                            WriteAxisSamples(snapshot, axisData.CouchVrtExp, axisData.CouchVrtAct, logWriter);
+                            break;
+                        case 7: // Couch Lng
+                            WriteAxisSamples(snapshot, axisData.CouchLngExp, axisData.CouchLngAct, logWriter);
+                            break;
+                        case 8: // Couch Lat
+                            WriteAxisSamples(snapshot, axisData.CouchLatExp, axisData.CouchLatAct, logWriter);
+                            break;
+                        case 9: // Couch Rtn
+                            WriteAxisSamples(snapshot, axisData.CouchRtnExp, axisData.CouchRtnAct, logWriter);
+                            break;
+                        case 10: // Couch Pit
+                            WriteAxisSamples(snapshot, axisData.CouchPitExp, axisData.CouchPitAct, logWriter);
+                            break;
+                        case 11: // Couch Rol
+                            WriteAxisSamples(snapshot, axisData.CouchRolExp, axisData.CouchRolAct, logWriter);
+                            break;
+                        case 40: // MU
+                            WriteAxisSamples(snapshot, axisData.MUExp, axisData.MUAct, logWriter);
+                            break;
+                        case 41: // Beam Hold
+                            WriteAxisSamples(snapshot, axisData.BeamHoldExp, axisData.BeamHoldAct, logWriter);
+                            break;
+                        case 42: // Control Point
+                            WriteAxisSamples(snapshot, axisData.ControlPointExp, axisData.ControlPointAct, logWriter);
+                            break;
+                        case 50: // MLC
+                            WriteAxisSamples(snapshot, axisData.MLCExp, axisData.MLCAct, logWriter);
+                            break;
+                        case 60: // Target Position
+                            WriteAxisSamples(snapshot, axisData.TargetPositionExp, axisData.TargetPositionAct, logWriter);
+                            break;
+                        case 61: // Tracking Target
+                            WriteAxisSamples(snapshot, axisData.TrackingTargetExp, axisData.TrackingTargetAct, logWriter);
+                            break;
+                        case 62: // Tracking Base
+                            WriteAxisSamples(snapshot, axisData.TrackingBaseExp, axisData.TrackingBaseAct, logWriter);
+                            break;
+                        case 63: // Tracking Phase
+                            WriteAxisSamples(snapshot, axisData.TrackingPhaseExp, axisData.TrackingPhaseAct, logWriter);
+                            break;
+                        case 64: // Tracking Conformity Index
+                            WriteAxisSamples(snapshot, axisData.TCIExp, axisData.TCIAct, logWriter);
+                            break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Writes samples for a specific axis at a specific snapshot
+        /// </summary>
+        private static void WriteAxisSamples(int snapshot, List<float[]> expected, List<float[]> actual, BinaryWriter logWriter)
+        {
+            for (int sample = 0; sample < expected.Count; sample++)
+            {
+                // Write expected value
+                logWriter.Write(expected[sample][snapshot]);
+                // Write actual value
+                logWriter.Write(actual[sample][snapshot]);
+            }
+        }
+
+        /// <summary>
+        /// Calculates CRC-16 CCITT for the file (excluding the CRC bytes themselves)
+        /// </summary>
+        private static ushort CalculateCRC(string fileName)
+        {
+            ushort crc = 0xFFFF; // Seed value
+            ushort polynomial = 0x1021; // CCITT polynomial
+
+            using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read))
+            {
+                int b;
+                while ((b = fs.ReadByte()) != -1)
+                {
+                    crc ^= (ushort)(b << 8);
+                    for (int i = 0; i < 8; i++)
+                    {
+                        if ((crc & 0x8000) != 0)
+                        {
+                            crc = (ushort)((crc << 1) ^ polynomial);
+                        }
+                        else
+                        {
+                            crc <<= 1;
+                        }
+                    }
+                }
+            }
+
+            return crc;
+        }
+        #endregion
     }
+
 
 }

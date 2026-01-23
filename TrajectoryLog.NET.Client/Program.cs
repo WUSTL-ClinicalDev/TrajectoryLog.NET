@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TrajectoryLog.NET;
+using TrajectoryLog.NET.TrajectorySpecifications;
 
 namespace TrajectoryLog.NET.Client
 {
@@ -31,13 +32,28 @@ namespace TrajectoryLog.NET.Client
             //var expectedFluence = TrajectoryAPI.BuildFluence(locallog, "Expected");
             //WriteFluence(actualFluence);
             //WriteFluence(expectedFluence);
-            Console.WriteLine("Do you want to write .csv? (y/n)");
-            if (Console.ReadLine().Trim().Equals("y", StringComparison.OrdinalIgnoreCase))
-            {
-                TrajectoryAPI.ToCSV(locallog);
-            }
-            TrajectoryAPI.PublishPDF(locallog);
+            //Console.WriteLine("Do you want to write .csv? (y/n)");
+            //if (Console.ReadLine().Trim().Equals("y", StringComparison.OrdinalIgnoreCase))
+            //{
+            //    TrajectoryAPI.ToCSV(locallog);
+            //}
+            //TrajectoryAPI.PublishPDF(locallog);
+            //modify MLC leaf positions.
+            TrajectoryAPI.ModifyMLCActualPositions(locallog, 0.05f);//leaf positions are in cm
+            SaveLog(locallog);
             Console.ReadLine();
+        }
+
+        private static void SaveLog(TrajectoryLogInfo locallog)
+        {
+            SaveFileDialog sfd = new SaveFileDialog();
+            sfd.Filter = "Binary File (*.bin)|*.bin";
+            sfd.Title = "Save Modified Trajectory Log File";
+            if(sfd.ShowDialog() == true)
+            {
+                TrajectoryAPI.SaveLog(locallog, sfd.FileName);
+            }
+            Console.WriteLine($"Log saved!");
         }
 
         private static void WriteFluence(double[,] actualFluence)
@@ -62,4 +78,6 @@ namespace TrajectoryLog.NET.Client
             }
         }
     }
+
+
 }
