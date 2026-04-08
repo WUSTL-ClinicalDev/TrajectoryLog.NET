@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using TrajectoryLog.NET.TrajectorySpecifications;
@@ -242,21 +243,33 @@ namespace TrajectoryLog.NET
                 bool isLast = beam.Seq == numberOfSubBeams - 1;
 
 
-                if (!isLast)
+                if (isLast)
                 {
-                    int nextCP = tlog.Header.Subbeams.ElementAt(beam.Seq + 1).CP;
-                    endIndex = tlog.Header.AxisData.ControlPointAct.First().ToList().IndexOf(tlog.Header.AxisData.ControlPointAct.First().FirstOrDefault(cp => cp > nextCP));
-
+                    //ensure that the log file goes beyond the control point of the analyzed subbeam.
+                    if (tlog.Header.AxisData.ControlPointAct.First().Last() > beam.CP)
+                    {
+                        endIndex = tlog.Header.AxisData.ControlPointAct.First().Length;
+                    }
+                    //if not endIndex will be 0 which is appropriat.e
 
                 }
                 else
                 {
-                    endIndex = tlog.Header.AxisData.ControlPointAct.First().Length;
+                    int nextCP = tlog.Header.Subbeams.ElementAt(beam.Seq + 1).CP;
+                    endIndex = tlog.Header.AxisData.ControlPointAct.First().ToList().IndexOf(tlog.Header.AxisData.ControlPointAct.First().FirstOrDefault(cp => cp > nextCP));
+                }
+                //check if endIndex iterated. If the subbeam wasn't delivered, the endIndex would be 0. 
+                if (endIndex > startIndex)
+                {
+                    AxisData ad = IterateAxisData(tlog.Header.AxisEnumeration, tlog.Header.AxisData, startIndex, endIndex);
+                    tlog.Header.AxesPerBeam.Add(ad);
+                    startIndex = endIndex;
 
                 }
-                AxisData ad = IterateAxisData(tlog.Header.AxisEnumeration, tlog.Header.AxisData, startIndex, endIndex);
-                tlog.Header.AxesPerBeam.Add(ad);
-                startIndex = endIndex;
+                else
+                {
+                    tlog.Header.AxesPerBeam.Add(null);
+                }
             }
             return true;
         }
