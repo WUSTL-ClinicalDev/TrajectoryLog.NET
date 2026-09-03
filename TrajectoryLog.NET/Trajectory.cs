@@ -456,6 +456,7 @@ namespace TrajectoryLog.NET
             double mlcMaxLoc = 0.0;
             double mlcRMS = CalculateRMS(tlog.Header.AxisData.MLCAct, tlog.Header.AxisData.MLCExp, "MLC", out mlcMax, out mlcMaxLoc);
             string mlcMaxNum = String.Empty;// Convert.ToInt16(mlcMaxLoc);
+            double treatmentTime = tlog.Header.NumberOfSnapshots * tlog.Header.SampleIntervalMS / 1000.0;//seconds
             if (tlog.Header.MLCModel == MLCModelEnum.SX2)
             {
                 if (mlcMaxLoc > 58)
@@ -518,8 +519,12 @@ namespace TrajectoryLog.NET
                 Text = $"\tAverage MLC RMS: {mlcRMS:F3} [cm]",
                 Margin = new Thickness(5)
             });
-
+            rmsSP.Children.Add(new TextBlock
+            {
+                Text = $"Total Treatment Time: {treatmentTime:F2} seconds", FontWeight=  FontWeights.Bold, FontSize=14,    
+            });
             flowDocument.Blocks.Add(new BlockUIContainer(rmsSP));
+
             //Print visualizations.
             flowDocument.Blocks.Add(new Paragraph(new Run("Fluence Analysis")) { FontWeight = FontWeights.Bold, Margin = new Thickness(5) });
             Grid grid = new Grid();
@@ -727,7 +732,7 @@ namespace TrajectoryLog.NET
                         }
                         break;
                     case 43://Time
-                        for(int sample=0; sample < samplesPerAxis[axisIterator]; sample++)
+                        for (int sample = 0; sample < samplesPerAxis[axisIterator]; sample++)
                         {
                             axisData.TimeExp.Add(new float[numberOfSnapshots]);
                             axisData.TimeAct.Add(new float[numberOfSnapshots]);
@@ -1082,7 +1087,7 @@ namespace TrajectoryLog.NET
                     //Adjacent distal leaves (similar to SX2 approach)
                     int colAfterStart = i < 45 ? fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(47 + i + 95).ElementAt(cp) * 10) : colStart;
                     int colAfterEnd = i < 45 ? fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 47).ElementAt(cp) * 10) : colEnd;
-                    int colBeforeStart = i > 0 ? fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(46+ i + 95).ElementAt(cp) * 10) : colStart;
+                    int colBeforeStart = i > 0 ? fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(46 + i + 95).ElementAt(cp) * 10) : colStart;
                     int colBeforeEnd = i > 0 ? fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 46).ElementAt(cp) * 10) : colEnd;
 
                     int rows = fluence.GetLength(1) - 1;
@@ -1094,14 +1099,14 @@ namespace TrajectoryLog.NET
                     int upperFluenceEnd = colEnd < colAfterEnd ? colEnd : colAfterEnd;
 
                     //Calculate leaf thickness from offsets (even indices = proximal leaf thickness)
-                    double leafThickness = Math.Abs(leafThicknesses[i]*2); // in 0.5mm units
+                    double leafThickness = Math.Abs(leafThicknesses[i] * 2); // in 0.5mm units
                     int halfThickness = Convert.ToInt32(leafThickness / 2.0);
 
                     //Calculate row position based on accumulated offsets
                     double rowPosition = 0;
                     for (int j = 0; j < i; j++)
                     {
-                        rowPosition += Math.Abs(leafThicknesses[i]*2);
+                        rowPosition += Math.Abs(leafThicknesses[i] * 2);
                     }
                     int rowStart = Convert.ToInt32(rowPosition);
 
