@@ -38,6 +38,8 @@ namespace TrajectoryLog.NET.TrajectorySpecifications.AxisHelpers
         public List<float[]> BeamHoldAct { get; set; }
         public List<float[]> ControlPointExp { get; set; }
         public List<float[]> ControlPointAct { get; set; }
+        public List<float[]> TimeExp { get; set; }
+        public List<float[]> TimeAct { get; set; }
         public List<float[]> MLCExp { get; set; }
         public List<float[]> MLCAct { get; set; }
         public List<float[]> TargetPositionExp { get; set; }
@@ -50,6 +52,7 @@ namespace TrajectoryLog.NET.TrajectorySpecifications.AxisHelpers
         public List<float[]> TrackingPhaseAct { get; set; }
         public List<float[]> TCIExp { get; set; } //TrackingConformityIndexExpected
         public List<float[]> TCIAct { get; set; } //TrackingConformityIndexActual
+        public string BeamId { get; set; }//used to differentiate split beams.
         public AxisData()
         {
             CollRtnExpected = new List<float[]>();
@@ -82,6 +85,8 @@ namespace TrajectoryLog.NET.TrajectorySpecifications.AxisHelpers
             BeamHoldAct = new List<float[]>();
             ControlPointExp = new List<float[]>();
             ControlPointAct = new List<float[]>();
+            TimeExp = new List<float[]>();
+            TimeAct = new List<float[]>();
             MLCExp = new List<float[]>();
             MLCAct = new List<float[]>();
             TargetPositionExp = new List<float[]>();

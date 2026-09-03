@@ -419,7 +419,16 @@ namespace TrajectoryLog.NET
             for (int i = 0; i < logs.ElementAt(2).Count(); i++)//loop through MLC control points.
             {
                 float muCurrent = tlog.Header.AxisData.MUExp.ElementAt(0).ElementAt(i);
-                AddFluenceFromMLCData(tlog.Header.MLCModel, logs, muStart / totalMU, muCurrent / totalMU, i, ref fluence);
+                if (totalMU > 0)
+                {
+                    AddFluenceFromMLCData(tlog.Header.MLCModel, logs, muStart / totalMU, muCurrent / totalMU, i, ref fluence);
+                }
+                else
+                {
+                    //add a single value each time.
+                    AddFluenceFromMLCData(tlog.Header.MLCModel, logs, (float)i / (float)logs.ElementAt(2).Count(),
+                        (float)(i + 1) / (float)logs.ElementAt(2).Count(), i, ref fluence);
+                }
                 muStart = muCurrent;
 
             }
@@ -717,6 +726,13 @@ namespace TrajectoryLog.NET
                             axisData.ControlPointAct.Add(new float[numberOfSnapshots]);
                         }
                         break;
+                    case 43://Time
+                        for(int sample=0; sample < samplesPerAxis[axisIterator]; sample++)
+                        {
+                            axisData.TimeExp.Add(new float[numberOfSnapshots]);
+                            axisData.TimeAct.Add(new float[numberOfSnapshots]);
+                        }
+                        break;
                     case 50://MLC
                         for (int sample = 0; sample < samplesPerAxis[axisIterator]; sample++)
                         {
@@ -892,6 +908,14 @@ namespace TrajectoryLog.NET
                                 Console.WriteLine($"Control Point Actual: {String.Join(", ", axisData.ControlPointAct.ElementAt(0))}");
                             }
                             break;
+                        case 43: //Time
+                            GetAxisData(snapShot, samplesPerAxis[axisIterator], axisData.TimeExp, axisData.ControlPointAct, logReader);
+                            if (bDebug && snapShot == numberOfSnapshots - 1)
+                            {
+                                Console.WriteLine($"Control Point Expected: {String.Join(", ", axisData.TimeExp.ElementAt(0))}");
+                                Console.WriteLine($"Control Point Actual: {String.Join(", ", axisData.TimeAct.ElementAt(0))}");
+                            }
+                            break;
                         case 50: //MLC
                             GetAxisData(snapShot, samplesPerAxis[axisIterator], axisData.MLCExp, axisData.MLCAct, logReader);
                             if (bDebug && snapShot == numberOfSnapshots - 1)
@@ -1023,6 +1047,88 @@ namespace TrajectoryLog.NET
                 //    fluence[i, 100] = 20;
                 //    fluence[200, i] = 40;
                 //}
+            }
+            else if (mLCModel == MLCModelEnum.STK_186)
+            {
+                //STK_186 has 186 MLC leaves (93 leaf pairs)
+                //Proximal leaves: 1-46
+                //Distal leaves: 47-93 (leaves 47 and 93 are at field edges and don't move)
+                //Leaf arrangement similar to SX2 with stacked proximal and distal leaves
+
+                //Define leaf offsets from the center in mm
+                //Even-indexed entries (0,2,4...) represent proximal leaves (1,2,3...46)
+                //Odd-indexed entries (1,3,5...) represent where distal cuts into proximal
+                List<double> leafThicknesses = new List<double>
+                {
+                    10, 10, 10,10,10,10,10,10,10,10,10,//leaf 1-11
+                    8.7,//12
+                    7.5,7.5,7.5,7.5, 7.5, 7.5, 7.5,7.5,7.5,7.5,7.5,
+                    7.5,7.5,7.5,7.5, 7.5, 7.5, 7.5,7.5,7.5,7.5,7.5,//leaf 13 - 35
+                    8.7, //36
+                    10, 10, 10,10,10,10,10,10,10,10,10,//leaf 37-46
+                };
+
+                //Loop through 46 proximal leaves similar to SX2
+                for (int i = 0; i < 46; i++)
+                {
+                    //Leaf indices in trajectory log:
+                    //Proximal X2 bank: indices 2 to 47 (after 2 carriages)
+                    //Distal X1 bank: indices 95 to 140 (2 + 93)
+
+                    //Current proximal and distal leaf positions
+                    int colStart = fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(i + 95).ElementAt(cp) * 10);
+                    int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 2).ElementAt(cp) * 10);
+
+                    //Adjacent distal leaves (similar to SX2 approach)
+                    int colAfterStart = i < 45 ? fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(47 + i + 95).ElementAt(cp) * 10) : colStart;
+                    int colAfterEnd = i < 45 ? fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 47).ElementAt(cp) * 10) : colEnd;
+                    int colBeforeStart = i > 0 ? fluence.GetLength(0) / 2 - Convert.ToInt32(mlcCollections.ElementAt(46+ i + 95).ElementAt(cp) * 10) : colStart;
+                    int colBeforeEnd = i > 0 ? fluence.GetLength(0) / 2 + Convert.ToInt32(mlcCollections.ElementAt(i + 46).ElementAt(cp) * 10) : colEnd;
+
+                    int rows = fluence.GetLength(1) - 1;
+
+                    //Determine fluence boundaries for overlap regions
+                    int lowerFluenceStart = colStart > colBeforeStart ? colStart : colBeforeStart;
+                    int upperFluenceStart = colStart > colAfterStart ? colStart : colAfterStart;
+                    int lowerFluenceEnd = colEnd < colBeforeEnd ? colEnd : colBeforeEnd;
+                    int upperFluenceEnd = colEnd < colAfterEnd ? colEnd : colAfterEnd;
+
+                    //Calculate leaf thickness from offsets (even indices = proximal leaf thickness)
+                    double leafThickness = Math.Abs(leafThicknesses[i]*2); // in 0.5mm units
+                    int halfThickness = Convert.ToInt32(leafThickness / 2.0);
+
+                    //Calculate row position based on accumulated offsets
+                    double rowPosition = 0;
+                    for (int j = 0; j < i; j++)
+                    {
+                        rowPosition += Math.Abs(leafThicknesses[i]*2);
+                    }
+                    int rowStart = Convert.ToInt32(rowPosition);
+
+                    //Add fluence for lower half of leaf (influenced by previous distal leaf)
+                    for (int ii = 0; ii < halfThickness; ii++)
+                    {
+                        for (int iii = lowerFluenceStart; iii < lowerFluenceEnd; iii++)
+                        {
+                            if (iii >= 0 && iii < fluence.GetLength(0) && rows - (rowStart + ii) >= 0 && rows - (rowStart + ii) < fluence.GetLength(1))
+                            {
+                                fluence[iii, rows - (rowStart + ii)] += muCurrent - muStart;
+                            }
+                        }
+                    }
+
+                    //Add fluence for upper half of leaf (influenced by next distal leaf)
+                    for (int ii = halfThickness; ii < Convert.ToInt32(leafThickness); ii++)
+                    {
+                        for (int iii = upperFluenceStart; iii < upperFluenceEnd; iii++)
+                        {
+                            if (iii >= 0 && iii < fluence.GetLength(0) && rows - (rowStart + ii) >= 0 && rows - (rowStart + ii) < fluence.GetLength(1))
+                            {
+                                fluence[iii, rows - (rowStart + ii)] += muCurrent - muStart;
+                            }
+                        }
+                    }
+                }
             }
             else if (mLCModel == MLCModelEnum.NDS120 || mLCModel == MLCModelEnum.NDS120HD)
             {
