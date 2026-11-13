@@ -416,17 +416,24 @@ namespace TrajectoryLog.NET
             float totalMU = MLCstring == "Expected" ? tlog.Header.AxisData.MUExp.First().Max() : tlog.Header.AxisData.MUAct.First().Max();
             //int i = 0;
             var logs = MLCstring == "Expected" ? tlog.Header.AxisData.MLCExp : tlog.Header.AxisData.MLCAct;
+            var jawsX1 = MLCstring == "Expected" ? tlog.Header.AxisData.X1Expected: tlog.Header.AxisData.X1Actual;
+            var jawsX2 = MLCstring == "Expected" ? tlog.Header.AxisData.X2Expected : tlog.Header.AxisData.X2Actual;
+            var jawsY1 = MLCstring == "Expected" ? tlog.Header.AxisData.Y1Expected : tlog.Header.AxisData.Y1Actual;
+            var jawsY2 = MLCstring == "Expected" ? tlog.Header.AxisData.Y2Expected : tlog.Header.AxisData.Y2Actual;
             for (int i = 0; i < logs.ElementAt(2).Count(); i++)//loop through MLC control points.
             {
                 float muCurrent = tlog.Header.AxisData.MUExp.ElementAt(0).ElementAt(i);
                 if (totalMU > 0)
                 {
-                    AddFluenceFromMLCData(tlog.Header.MLCModel, logs, muStart / totalMU, muCurrent / totalMU, i, ref fluence);
+                    AddFluenceFromMLCData(tlog.Header.MLCModel, logs,
+                        jawsX1, jawsX2, jawsY1, jawsY2,muStart / totalMU, muCurrent / totalMU, i, ref fluence);
                 }
                 else
                 {
                     //add a single value each time.
-                    AddFluenceFromMLCData(tlog.Header.MLCModel, logs, (float)i / (float)logs.ElementAt(2).Count(),
+                    AddFluenceFromMLCData(tlog.Header.MLCModel, logs,
+                        jawsX1, jawsX2, jawsY1, jawsY2,
+                        (float)i / (float)logs.ElementAt(2).Count(),
                         (float)(i + 1) / (float)logs.ElementAt(2).Count(), i, ref fluence);
                 }
                 muStart = muCurrent;
@@ -993,6 +1000,25 @@ namespace TrajectoryLog.NET
 
         }
         /// <summary>
+        /// Adds fluence for a single row, clipped to the jaw-defined field boundaries.
+        /// </summary>
+        private static void AddClippedFluenceRow(ref double[,] fluence, int colStart, int colEnd, int rowIndex, double value, int colJawStart, int colJawEnd, int rowJawStart, int rowJawEnd)
+        {
+            if (rowIndex < rowJawStart || rowIndex > rowJawEnd)
+            {
+                return;//row is blocked by Y jaws.
+            }
+            int clippedStart = colStart > colJawStart ? colStart : colJawStart;
+            int clippedEnd = colEnd < colJawEnd ? colEnd : colJawEnd;
+            for (int col = clippedStart; col < clippedEnd; col++)
+            {
+                if (col >= 0 && col < fluence.GetLength(0) && rowIndex >= 0 && rowIndex < fluence.GetLength(1))
+                {
+                    fluence[col, rowIndex] += value;
+                }
+            }
+        }
+        /// <summary>
         /// Translate MLC information to fluence.
         /// </summary>
         /// <param name="mLCModel"></param>
@@ -1001,8 +1027,27 @@ namespace TrajectoryLog.NET
         /// <param name="muCurrent"></param>
         /// <param name="cp"></param>
         /// <param name="fluence"></param>
-        private static void AddFluenceFromMLCData(MLCModelEnum mLCModel, List<float[]> mlcCollections, float muStart, float muCurrent, int cp, ref double[,] fluence)
+        private static void AddFluenceFromMLCData(MLCModelEnum mLCModel, List<float[]> mlcCollections, List<float[]> jawsX1, List<float[]> jawsX2, List<float[]> jawsY1, List<float[]> jawsY2, float muStart, float muCurrent, int cp, ref double[,] fluence)
         {
+            //Jaw positions are reported positive when on their own side of isocenter, negative when crossing over isocenter.
+            //X1 is on the left, X2 is on the right, Y1 is on the bottom, Y2 is on the top.
+            int centerCol = fluence.GetLength(0) / 2;
+            int centerRow = fluence.GetLength(1) / 2;
+            float x1Jaw = jawsX1.First().ElementAt(cp);
+            float x2Jaw = jawsX2.First().ElementAt(cp);
+            float y1Jaw = jawsY1.First().ElementAt(cp);
+            float y2Jaw = jawsY2.First().ElementAt(cp);
+            int colJawStart = 0;
+            int colJawEnd = fluence.GetLength(0) - 1;
+            int rowJawStart = 0;
+            int rowJawEnd = fluence.GetLength(1) - 1;
+            if(x1Jaw<int.MaxValue)//when collimators don't exist on a plan the jaw position is 3.4 x 10^34 outside the Int32 max value range.
+            {
+                colJawStart = centerCol - Convert.ToInt32(x1Jaw * 10);
+                colJawEnd = centerCol + Convert.ToInt32(x2Jaw * 10);
+                rowJawStart = centerRow - Convert.ToInt32(y2Jaw * 10);//top of field, bound by Y2
+                rowJawEnd = centerRow + Convert.ToInt32(y1Jaw * 10);//bottom of field, bound by Y1
+            }
             if (mLCModel == MLCModelEnum.SX2)
             {
                 //go up from the bottom of the fluence map, determine the position of each leaf and use the leaf above and below to determine how many rows will receive fluence.
@@ -1032,17 +1077,11 @@ namespace TrajectoryLog.NET
                     int rowStart = i * 10;
                     for (int ii = 0; ii < 5; ii++)//add the MU for 5 mm
                     {
-                        for (int iii = lowerFluenceStart; iii < lowerFluenceEnd; iii++)
-                        {
-                            fluence[iii, rows - (rowStart + ii)] += muCurrent - muStart;
-                        }
+                        AddClippedFluenceRow(ref fluence, lowerFluenceStart, lowerFluenceEnd, rows - (rowStart + ii), muCurrent - muStart, colJawStart, colJawEnd, rowJawStart, rowJawEnd);
                     }
                     for (int ii = 5; ii < 10; ii++)
                     {
-                        for (int iii = upperFluenceStart; iii < upperFluenceEnd; iii++)
-                        {
-                            fluence[iii, rows - (rowStart + ii)] += muCurrent - muStart;
-                        }
+                        AddClippedFluenceRow(ref fluence, upperFluenceStart, upperFluenceEnd, rows - (rowStart + ii), muCurrent - muStart, colJawStart, colJawEnd, rowJawStart, rowJawEnd);
                     }
                 }
                 //for testing only. 
@@ -1113,25 +1152,13 @@ namespace TrajectoryLog.NET
                     //Add fluence for lower half of leaf (influenced by previous distal leaf)
                     for (int ii = 0; ii < halfThickness; ii++)
                     {
-                        for (int iii = lowerFluenceStart; iii < lowerFluenceEnd; iii++)
-                        {
-                            if (iii >= 0 && iii < fluence.GetLength(0) && rows - (rowStart + ii) >= 0 && rows - (rowStart + ii) < fluence.GetLength(1))
-                            {
-                                fluence[iii, rows - (rowStart + ii)] += muCurrent - muStart;
-                            }
-                        }
+                        AddClippedFluenceRow(ref fluence, lowerFluenceStart, lowerFluenceEnd, rows - (rowStart + ii), muCurrent - muStart, colJawStart, colJawEnd, rowJawStart, rowJawEnd);
                     }
 
                     //Add fluence for upper half of leaf (influenced by next distal leaf)
                     for (int ii = halfThickness; ii < Convert.ToInt32(leafThickness); ii++)
                     {
-                        for (int iii = upperFluenceStart; iii < upperFluenceEnd; iii++)
-                        {
-                            if (iii >= 0 && iii < fluence.GetLength(0) && rows - (rowStart + ii) >= 0 && rows - (rowStart + ii) < fluence.GetLength(1))
-                            {
-                                fluence[iii, rows - (rowStart + ii)] += muCurrent - muStart;
-                            }
-                        }
+                        AddClippedFluenceRow(ref fluence, upperFluenceStart, upperFluenceEnd, rows - (rowStart + ii), muCurrent - muStart, colJawStart, colJawEnd, rowJawStart, rowJawEnd);
                     }
                 }
             }
@@ -1183,10 +1210,7 @@ namespace TrajectoryLog.NET
                     //int colEnd = fluence.GetLength(0) / 2 + Convert.ToInt32(leafPositions[1, i] * 1) * 2;//we need +2 to skip the carriages.
                     for (int j = currentRow; j < rowEnd; j++)//row loop
                     {
-                        for (int jj = colStart; jj < colEnd; jj++)
-                        {
-                            fluence[jj, rows - j] += muCurrent - muStart;
-                        }
+                        AddClippedFluenceRow(ref fluence, colStart, colEnd, rows - j, muCurrent - muStart, colJawStart, colJawEnd, rowJawStart, rowJawEnd);
                     }
                     currentRow = rowEnd;
                 }

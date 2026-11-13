@@ -34,9 +34,9 @@ namespace TrajectoryLog.NET.Client
             //Console.WriteLine("Do you want to write .csv? (y/n)");
             //if (Console.ReadLine().Trim().Equals("y", StringComparison.OrdinalIgnoreCase))
             //{
-                TrajectoryAPI.ToCSV(locallog);
+            //    TrajectoryAPI.ToCSV(locallog);
             //}
-            //TrajectoryAPI.PublishPDF(locallog);
+            TrajectoryAPI.PublishPDF(locallog);
             //Console.ReadLine();
         }
 
