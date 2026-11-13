@@ -1439,6 +1439,14 @@ namespace TrajectoryLog.NET
                         Array.Copy(axisData.ControlPointAct.First(), start_index, cp_act, 0, end_index - start_index);
                         ad.ControlPointAct.Add(cp_act);
                         break;
+                    case 43://Time
+                        float[] time_exp = new float[end_index - start_index];
+                        Array.Copy(axisData.TimeExp.First(), start_index, time_exp, 0, end_index - start_index);
+                        ad.TimeExp.Add(time_exp);
+                        float[] time_act = new float[end_index - start_index];
+                        Array.Copy(axisData.TimeAct.First(), start_index, time_act, 0, end_index - start_index);
+                        ad.TimeAct.Add(time_act);
+                        break;
                     case 50://MLC
                         foreach (var mlc_leaf in axisData.MLCExp)
                         {
