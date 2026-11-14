@@ -1041,12 +1041,15 @@ namespace TrajectoryLog.NET
             int colJawEnd = fluence.GetLength(0) - 1;
             int rowJawStart = 0;
             int rowJawEnd = fluence.GetLength(1) - 1;
+            //jaw positions are reported in cm, same as MLC leaf positions, but the fluence grid resolution (pixels per cm)
+            //differs by model - match the scale factor used by that model's MLC-to-fluence conversion.
+            int jawScaleFactor = (mLCModel == MLCModelEnum.NDS120 || mLCModel == MLCModelEnum.NDS120HD) ? 20 : 10;
             if(x1Jaw<int.MaxValue)//when collimators don't exist on a plan the jaw position is 3.4 x 10^34 outside the Int32 max value range.
             {
-                colJawStart = centerCol - Convert.ToInt32(x1Jaw * 10);
-                colJawEnd = centerCol + Convert.ToInt32(x2Jaw * 10);
-                rowJawStart = centerRow - Convert.ToInt32(y2Jaw * 10);//top of field, bound by Y2
-                rowJawEnd = centerRow + Convert.ToInt32(y1Jaw * 10);//bottom of field, bound by Y1
+                colJawStart = centerCol - Convert.ToInt32(x1Jaw * jawScaleFactor);
+                colJawEnd = centerCol + Convert.ToInt32(x2Jaw * jawScaleFactor);
+                rowJawStart = centerRow - Convert.ToInt32(y2Jaw * jawScaleFactor);//top of field, bound by Y2
+                rowJawEnd = centerRow + Convert.ToInt32(y1Jaw * jawScaleFactor);//bottom of field, bound by Y1
             }
             if (mLCModel == MLCModelEnum.SX2)
             {
